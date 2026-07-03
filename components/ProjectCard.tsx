@@ -1,18 +1,17 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Project } from "@/lib/data";
+import { withBasePath } from "@/lib/paths";
 
 export default function ProjectCard({ project }: { project: Project }) {
   return (
     <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-surface transition-shadow hover:shadow-md">
       <div className="relative h-44 overflow-hidden bg-background">
         {project.image ? (
-          <Image
-            src={project.image}
+          // eslint-disable-next-line @next/next/no-img-element -- plain img so GitHub Pages basePath is always applied
+          <img
+            src={withBasePath(project.image)}
             alt={project.title}
-            fill
-            className="object-cover object-top"
-            sizes="(max-width: 768px) 100vw, 50vw"
+            className="h-full w-full object-cover object-top"
           />
         ) : (
           <div className="flex h-full items-center justify-center bg-accent-light/30 text-sm text-muted">

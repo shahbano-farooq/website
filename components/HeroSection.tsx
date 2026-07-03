@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { siteConfig } from "@/lib/data";
+import { withBasePath } from "@/lib/paths";
 
 const SCROLL_THRESHOLD = 56;
 
@@ -27,13 +27,11 @@ export default function HeroSection() {
 
   return (
     <section className="relative min-h-[78vh] overflow-hidden border-b border-border sm:min-h-[85vh]">
-      <Image
-        src="/hero-vangogh.png"
+      {/* eslint-disable-next-line @next/next/no-img-element -- plain img so GitHub Pages basePath is always applied */}
+      <img
+        src={withBasePath("/hero-vangogh.png")}
         alt="Shahbano Farooq — Van Gogh style underwater portrait"
-        fill
-        className="object-cover object-[center_30%]"
-        priority
-        sizes="100vw"
+        className="absolute inset-0 h-full w-full object-cover object-[center_30%]"
       />
 
       <div
