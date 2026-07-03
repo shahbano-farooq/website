@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import SectionHeading from "@/components/SectionHeading";
 import { projects } from "@/lib/data";
+import { withBasePath } from "@/lib/paths";
 
 const project = projects.find((p) => p.id === "pairedvis")!;
 
@@ -41,7 +42,10 @@ export default function PairedVisPage() {
           preload="metadata"
           playsInline
         >
-          <source src="/projects/pairedvis/pairedvis-demo.mp4" type="video/mp4" />
+          <source
+            src={withBasePath("/projects/pairedvis/pairedvis-demo.mp4")}
+            type="video/mp4"
+          />
           Your browser does not support embedded video playback.
         </video>
       </div>

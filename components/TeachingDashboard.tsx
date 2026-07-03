@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import * as d3 from "d3";
 import { teachingRecords, teachingTopicColors, type TeachingRecord, type TeachingTopic } from "@/lib/data";
 import { getStudentsForCourse } from "@/lib/teachingStudents";
+import { withBasePath } from "@/lib/paths";
 
 const TOPICS: TeachingTopic[] = [
   "Programming",
@@ -141,7 +142,7 @@ export default function TeachingDashboard() {
           course evaluations, and teaching activities across your career at Zayed University.
         </p>
         <a
-          href="/teaching/Journey-of-an-Instructor.pbix"
+          href={withBasePath("/teaching/Journey-of-an-Instructor.pbix")}
           download
           className="mt-3 inline-flex text-sm font-medium text-accent underline-offset-2 hover:underline"
         >

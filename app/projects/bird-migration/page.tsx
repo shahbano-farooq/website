@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { projects } from "@/lib/data";
+import { withBasePath } from "@/lib/paths";
 
 const project = projects.find((p) => p.id === "bird-migration")!;
 
@@ -36,7 +37,7 @@ export default function BirdMigrationPage() {
           </p>
         </div>
         <iframe
-          src="/projects/bird-migration/streamgraph_ribbons.html"
+          src={withBasePath("/projects/bird-migration/streamgraph_ribbons.html")}
           title="Bird Migration Visualization"
           className="h-[720px] w-full border-0 bg-white"
           loading="lazy"

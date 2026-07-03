@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import SectionHeading from "@/components/SectionHeading";
 import { cvSections, siteConfig } from "@/lib/data";
+import { withBasePath } from "@/lib/paths";
 
 export const metadata: Metadata = {
   title: "CV",
@@ -15,7 +16,7 @@ export default function CVPage() {
           subtitle={`${siteConfig.name} — ${siteConfig.department}`}
         />
         <a
-          href="/cv/Shahbano_Farooq_CV_2026.pdf"
+          href={withBasePath("/cv/Shahbano_Farooq_CV_2026.pdf")}
           download
           className="inline-flex shrink-0 items-center gap-2 rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-background"
         >
