@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #fafaf8;
+  --color-foreground: #1a2332;
+  --color-muted: #5c6574;
+  --color-accent: #2d5a7b;
+  --color-accent-light: #e8f0f6;
+  --color-border: #e2e4e8;
+  --color-surface: #ffffff;
+  --font-serif: var(--font-source-serif);
+  --font-sans: var(--font-dm-sans);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+}
+
+.life-timeline-tooltip {
+  pointer-events: none;
+  position: absolute;
+  z-index: 10;
+  max-width: 280px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: 12px 14px;
+  box-shadow: 0 4px 20px rgba(26, 35, 50, 0.12);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.life-timeline-tooltip h4 {
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin-bottom: 2px;
+}
+
+.life-timeline-tooltip p {
+  color: var(--color-muted);
+}
+
+@keyframes hero-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-intro-panel .hero-intro-item {
+  opacity: 0;
+  animation: hero-fade-up 0.55s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-intro-panel .hero-intro-item {
+    opacity: 1;
+    animation: none;
+  }
+}

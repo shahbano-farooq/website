@@ -1,0 +1,349 @@
+{
+  "offerings": [
+    {
+      "code": "GEN 175",
+      "term": "Fall 2018",
+      "students": 132
+    },
+    {
+      "code": "GEN 175",
+      "term": "Spring 2018",
+      "students": 285
+    },
+    {
+      "code": "GEN 175",
+      "term": "Fall 2019",
+      "students": 124
+    },
+    {
+      "code": "GEN 175",
+      "term": "Fall 2020",
+      "students": 148
+    },
+    {
+      "code": "GEN 110",
+      "term": "Fall 2020",
+      "students": 32
+    },
+    {
+      "code": "GEN 175",
+      "term": "Spring 2019",
+      "students": 170
+    },
+    {
+      "code": "GEN 175",
+      "term": "Fall 2021",
+      "students": 98
+    },
+    {
+      "code": "GEN 110",
+      "term": "Fall 2021",
+      "students": 25
+    },
+    {
+      "code": "GEN 175",
+      "term": "Spring 2020",
+      "students": 103
+    },
+    {
+      "code": "CIT 210",
+      "term": "Spring 2020",
+      "students": 30
+    },
+    {
+      "code": "CIT 210",
+      "term": "Fall 2022",
+      "students": 30
+    },
+    {
+      "code": "SWE 321",
+      "term": "Fall 2022",
+      "students": 109
+    },
+    {
+      "code": "GEN 175",
+      "term": "Fall 2022",
+      "students": 17
+    },
+    {
+      "code": "CIT 210",
+      "term": "Spring 2021",
+      "students": 26
+    },
+    {
+      "code": "GEN 175",
+      "term": "Spring 2021",
+      "students": 89
+    },
+    {
+      "code": "SWE 321",
+      "term": "Spring 2021",
+      "students": 28
+    },
+    {
+      "code": "GEN 175",
+      "term": "Fall 2023",
+      "students": 48
+    },
+    {
+      "code": "SWE 321",
+      "term": "Fall 2023",
+      "students": 62
+    },
+    {
+      "code": "SWE 225",
+      "term": "Fall 2023",
+      "students": 19
+    },
+    {
+      "code": "CIT 490",
+      "term": "Fall 2023",
+      "students": 10
+    },
+    {
+      "code": "GEN 175",
+      "term": "Spring 2022",
+      "students": 64
+    },
+    {
+      "code": "SWE 321",
+      "term": "Spring 2022",
+      "students": 52
+    },
+    {
+      "code": "CIT 490",
+      "term": "Spring 2022",
+      "students": 15
+    },
+    {
+      "code": "SWE 321",
+      "term": "Fall 2024",
+      "students": 50
+    },
+    {
+      "code": "ICB 103",
+      "term": "Fall 2024",
+      "students": 47
+    },
+    {
+      "code": "ICS 220",
+      "term": "Spring 2023",
+      "students": 47
+    },
+    {
+      "code": "ICS 220",
+      "term": "Fall 2025",
+      "students": 22
+    },
+    {
+      "code": "ICS 351",
+      "term": "Fall 2025",
+      "students": 21
+    },
+    {
+      "code": "CPSC 203",
+      "term": "Fall 2012",
+      "students": 180
+    },
+    {
+      "code": "CPSC 449",
+      "term": "Winter 2012",
+      "students": 55
+    },
+    {
+      "code": "CPSC 449",
+      "term": "Winter 2013",
+      "students": 52
+    }
+  ],
+  "byYear": [
+    {
+      "year": 2018,
+      "totalStudents": 417,
+      "offerings": [
+        {
+          "code": "GEN 175",
+          "term": "Fall 2018",
+          "students": 132
+        },
+        {
+          "code": "GEN 175",
+          "term": "Spring 2018",
+          "students": 285
+        }
+      ]
+    },
+    {
+      "year": 2019,
+      "totalStudents": 294,
+      "offerings": [
+        {
+          "code": "GEN 175",
+          "term": "Fall 2019",
+          "students": 124
+        },
+        {
+          "code": "GEN 175",
+          "term": "Spring 2019",
+          "students": 170
+        }
+      ]
+    },
+    {
+      "year": 2020,
+      "totalStudents": 313,
+      "offerings": [
+        {
+          "code": "GEN 175",
+          "term": "Fall 2020",
+          "students": 148
+        },
+        {
+          "code": "GEN 110",
+          "term": "Fall 2020",
+          "students": 32
+        },
+        {
+          "code": "GEN 175",
+          "term": "Spring 2020",
+          "students": 103
+        },
+        {
+          "code": "CIT 210",
+          "term": "Spring 2020",
+          "students": 30
+        }
+      ]
+    },
+    {
+      "year": 2021,
+      "totalStudents": 266,
+      "offerings": [
+        {
+          "code": "GEN 175",
+          "term": "Fall 2021",
+          "students": 98
+        },
+        {
+          "code": "GEN 110",
+          "term": "Fall 2021",
+          "students": 25
+        },
+        {
+          "code": "CIT 210",
+          "term": "Spring 2021",
+          "students": 26
+        },
+        {
+          "code": "GEN 175",
+          "term": "Spring 2021",
+          "students": 89
+        },
+        {
+          "code": "SWE 321",
+          "term": "Spring 2021",
+          "students": 28
+        }
+      ]
+    },
+    {
+      "year": 2022,
+      "totalStudents": 287,
+      "offerings": [
+        {
+          "code": "CIT 210",
+          "term": "Fall 2022",
+          "students": 30
+        },
+        {
+          "code": "SWE 321",
+          "term": "Fall 2022",
+          "students": 109
+        },
+        {
+          "code": "GEN 175",
+          "term": "Fall 2022",
+          "students": 17
+        },
+        {
+          "code": "GEN 175",
+          "term": "Spring 2022",
+          "students": 64
+        },
+        {
+          "code": "SWE 321",
+          "term": "Spring 2022",
+          "students": 52
+        },
+        {
+          "code": "CIT 490",
+          "term": "Spring 2022",
+          "students": 15
+        }
+      ]
+    },
+    {
+      "year": 2023,
+      "totalStudents": 186,
+      "offerings": [
+        {
+          "code": "GEN 175",
+          "term": "Fall 2023",
+          "students": 48
+        },
+        {
+          "code": "SWE 321",
+          "term": "Fall 2023",
+          "students": 62
+        },
+        {
+          "code": "SWE 225",
+          "term": "Fall 2023",
+          "students": 19
+        },
+        {
+          "code": "CIT 490",
+          "term": "Fall 2023",
+          "students": 10
+        },
+        {
+          "code": "ICS 220",
+          "term": "Spring 2023",
+          "students": 47
+        }
+      ]
+    },
+    {
+      "year": 2024,
+      "totalStudents": 97,
+      "offerings": [
+        {
+          "code": "SWE 321",
+          "term": "Fall 2024",
+          "students": 50
+        },
+        {
+          "code": "ICB 103",
+          "term": "Fall 2024",
+          "students": 47
+        }
+      ]
+    },
+    {
+      "year": 2025,
+      "totalStudents": 43,
+      "offerings": [
+        {
+          "code": "ICS 220",
+          "term": "Fall 2025",
+          "students": 22
+        },
+        {
+          "code": "ICS 351",
+          "term": "Fall 2025",
+          "students": 21
+        }
+      ]
+    }
+  ]
+}
