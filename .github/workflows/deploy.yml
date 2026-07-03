@@ -40,3 +40,4 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+        # Retry-friendly: if this fails with "try again later", re-run from Actions tab
