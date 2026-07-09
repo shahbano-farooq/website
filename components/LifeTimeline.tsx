@@ -157,6 +157,94 @@ function panelDistance(t: number) {
   return NODE_MARKER_R + PANEL_GAP + JOURNEY_PANEL_H / 2 + t * s(4);
 }
 
+function drawOriginFlowerBud(
+  parent: d3.Selection<SVGGElement, unknown, null, undefined>,
+  cx: number,
+  cy: number
+) {
+  const bud = parent
+    .append("g")
+    .attr("class", "journey-origin-bud")
+    .attr("transform", `translate(${cx},${cy})`);
+
+  const petalCount = 6;
+  for (let i = 0; i < petalCount; i++) {
+    const angle = (i / petalCount) * Math.PI * 2 - Math.PI / 2;
+    bud
+      .append("ellipse")
+      .attr("cx", 0)
+      .attr("cy", s(-10))
+      .attr("rx", s(7))
+      .attr("ry", s(15))
+      .attr("fill", "#8fb67a")
+      .attr("stroke", "#5f7f52")
+      .attr("stroke-width", s(0.8))
+      .attr("opacity", 0.95)
+      .attr("transform", `rotate(${(angle * 180) / Math.PI})`);
+  }
+
+  for (let i = 0; i < 5; i++) {
+    const angle = (i / 5) * Math.PI * 2 - Math.PI / 2 + 18;
+    bud
+      .append("ellipse")
+      .attr("cx", 0)
+      .attr("cy", s(-8))
+      .attr("rx", s(5.5))
+      .attr("ry", s(12))
+      .attr("fill", "#f0b8c8")
+      .attr("stroke", "#c97892")
+      .attr("stroke-width", s(0.7))
+      .attr("transform", `rotate(${(angle * 180) / Math.PI})`);
+  }
+
+  bud
+    .append("ellipse")
+    .attr("cx", 0)
+    .attr("cy", s(-4))
+    .attr("rx", s(4))
+    .attr("ry", s(7))
+    .attr("fill", "#f8d4de")
+    .attr("stroke", "#d490a6")
+    .attr("stroke-width", s(0.6));
+
+  bud
+    .append("path")
+    .attr(
+      "d",
+      `M 0 ${s(10)} C ${s(-3)} ${s(16)}, ${s(3)} ${s(18)}, 0 ${s(22)}`
+    )
+    .attr("fill", "none")
+    .attr("stroke", "#6f8f5e")
+    .attr("stroke-width", s(1.6))
+    .attr("stroke-linecap", "round");
+
+  bud
+    .append("text")
+    .attr("x", 0)
+    .attr("y", s(34))
+    .attr("text-anchor", "middle")
+    .attr("fill", INK)
+    .attr("font-size", s(7.5))
+    .attr("font-weight", 700)
+    .attr("paint-order", "stroke")
+    .attr("stroke", PAINTERLY_BG)
+    .attr("stroke-width", s(2.5))
+    .text("Murree Convent");
+
+  bud
+    .append("text")
+    .attr("x", 0)
+    .attr("y", s(44))
+    .attr("text-anchor", "middle")
+    .attr("fill", "#6a5f54")
+    .attr("font-size", s(7))
+    .attr("font-weight", 600)
+    .attr("paint-order", "stroke")
+    .attr("stroke", PAINTERLY_BG)
+    .attr("stroke-width", s(2.5))
+    .text("Pakistan");
+}
+
 /** Archimedean spiral mapped to calendar years (1999 → present). */
 function buildSpiralLayout(layoutWidth: number): SpiralLayout {
   const cx = layoutWidth / 2;
@@ -226,7 +314,7 @@ function computeJourneyBounds(
   }
 
   if (showOrigin) {
-    include(spiral.cx, spiral.cy, s(28));
+    include(spiral.cx, spiral.cy, s(40));
   }
 
   for (const node of nodes) {
@@ -483,31 +571,7 @@ export default function LifeTimeline() {
     });
 
     if (showOrigin) {
-      g.append("circle")
-        .attr("cx", spiral.cx)
-        .attr("cy", spiral.cy)
-        .attr("r", s(22))
-        .attr("fill", "#fffef5")
-        .attr("stroke", ROAD_EDGE)
-        .attr("stroke-width", s(1.5))
-        .attr("opacity", 0.9);
-
-      g.append("text")
-        .attr("x", spiral.cx)
-        .attr("y", spiral.cy - s(4))
-        .attr("text-anchor", "middle")
-        .attr("fill", "#8a7f72")
-        .attr("font-size", s(9))
-        .attr("font-weight", 600)
-        .text("1999");
-
-      g.append("text")
-        .attr("x", spiral.cx)
-        .attr("y", spiral.cy + s(10))
-        .attr("text-anchor", "middle")
-        .attr("fill", "#8a7f72")
-        .attr("font-size", s(8))
-        .text("Lahore");
+      drawOriginFlowerBud(g, spiral.cx, spiral.cy);
     }
 
     if (showGaps) {
@@ -683,7 +747,7 @@ export default function LifeTimeline() {
             aria-label="Spiral life journey visualization"
           />
           <p className="border-t border-border/60 px-4 py-3 text-center text-xs text-muted">
-            Colored strips along the spiral mark each chapter — length follows years on the path from Lahore (1999) to Vancouver today
+            Colored strips along the spiral mark each chapter — from Murree Convent, Pakistan at the center outward to Vancouver today
           </p>
         </div>
 
