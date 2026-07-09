@@ -696,7 +696,7 @@ export default function LifeTimeline() {
         .attr("fill", "#8a7f72")
         .attr("font-size", s(10))
         .attr("font-weight", 600)
-        .text("Vancouver · Now");
+        .text("Ongoing exploration");
     }
   }, [activeCategory, width, maxHeight]);
 
