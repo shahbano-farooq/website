@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { projects } from "@/lib/data";
-import { withBasePath } from "@/lib/paths";
 
 const project = projects.find((p) => p.id === "bird-migration")!;
+
+const BIRD_MIGRATION_VIDEO_URL =
+  "https://1sfu-my.sharepoint.com/:v:/r/personal/sfa143_sfu_ca/Documents/Final%20Project%20Video/Final%20Video%20View%203%20_v4.mp4?csf=1&web=1&e=fUjgFs&nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJTdHJlYW1XZWJBcHAiLCJyZWZlcnJhbFZpZXciOiJTaGFyZURpYWxvZy1MaW5rIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXcifX0%3D";
+
+const BIRD_MIGRATION_VIDEO_EMBED_URL = `https://1sfu-my.sharepoint.com/personal/sfa143_sfu_ca/_layouts/15/embed.aspx?newTargetListUrl=${encodeURIComponent(
+  "https://1sfu-my.sharepoint.com/personal/sfa143_sfu_ca/Documents/Final%20Project%20Video/Final%20Video%20View%203%20_v4.mp4"
+)}`;
 
 export const metadata: Metadata = {
   title: "Bird Migration Visualization",
@@ -31,17 +37,31 @@ export default function BirdMigrationPage() {
 
       <div className="mt-10 overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
         <div className="border-b border-border bg-accent-light/40 px-4 py-3">
-          <p className="text-sm font-medium text-foreground">Live Visualization</p>
+          <p className="text-sm font-medium text-foreground">Project Video</p>
           <p className="text-xs text-muted">
-            Interactive D3.js streamgraph with linked map views
+            Final walkthrough of the bird migration visualization
           </p>
         </div>
-        <iframe
-          src={withBasePath("/projects/bird-migration/streamgraph_ribbons.html")}
-          title="Bird Migration Visualization"
-          className="h-[720px] w-full border-0 bg-white"
-          loading="lazy"
-        />
+        <div className="relative aspect-video w-full bg-black">
+          <iframe
+            src={BIRD_MIGRATION_VIDEO_EMBED_URL}
+            title="Bird Migration Visualization — project video"
+            className="absolute inset-0 h-full w-full border-0"
+            allow="autoplay; fullscreen"
+            allowFullScreen
+            loading="lazy"
+          />
+        </div>
+        <div className="border-t border-border px-4 py-3">
+          <a
+            href={BIRD_MIGRATION_VIDEO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-accent underline-offset-2 hover:underline"
+          >
+            Open video in SharePoint →
+          </a>
+        </div>
       </div>
 
       <div className="mt-10 grid gap-8 md:grid-cols-2">

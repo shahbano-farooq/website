@@ -20,7 +20,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-6xl px-6 pt-16 pb-6">
           <SectionHeading
             title="My Journey"
-            subtitle="A spiral outward through education, industry, teaching, and research — from Lahore at the center to Vancouver today."
+            subtitle="Professional Life spiralling outward through education, industry, teaching, and research — from High School at Murree convent at the center to Vancouver today."
           />
           <LifeTimeline />
         </div>
