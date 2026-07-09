@@ -7,7 +7,7 @@ A personal portfolio showcasing HCI and visualization research, teaching experie
 - **Home** — Interactive D3.js life timeline visualization spanning education, industry, teaching, and research
 - **Projects** — Bird Migration visualization and M.Sc. thesis (PairedVis)
 - **Teaching** — D3.js dashboard of course history with bar chart and semester heatmap
-- **Publications** — Research output from CV
+- **Publications** — Research disemmination
 - **CV** — Full curriculum vitae with PDF download
 
 ## Getting Started
