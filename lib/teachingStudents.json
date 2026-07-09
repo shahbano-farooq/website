@@ -137,8 +137,23 @@
     },
     {
       "code": "ICS 351",
+      "term": "Fall 2024",
+      "students": 21
+    },
+    {
+      "code": "ICS 351",
       "term": "Fall 2025",
       "students": 21
+    },
+    {
+      "code": "ICS 352",
+      "term": "Fall 2024",
+      "students": 18
+    },
+    {
+      "code": "ICS 352",
+      "term": "Spring 2025",
+      "students": 20
     },
     {
       "code": "CPSC 203",

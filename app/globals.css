@@ -51,6 +51,47 @@ body {
   color: var(--color-muted);
 }
 
+/* Speech-bubble tail for journey hover callout */
+.journey-callout--right::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 9px solid transparent;
+  border-right-color: var(--color-border);
+}
+
+.journey-callout--right::after {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 8px solid transparent;
+  border-right-color: var(--color-surface);
+}
+
+@media (max-width: 639px) {
+  .journey-callout--right::before {
+    left: 50%;
+    top: -9px;
+    transform: translateX(-50%);
+    border: 9px solid transparent;
+    border-bottom-color: var(--color-border);
+    border-right-color: transparent;
+  }
+
+  .journey-callout--right::after {
+    left: 50%;
+    top: -7px;
+    transform: translateX(-50%);
+    border: 8px solid transparent;
+    border-bottom-color: var(--color-surface);
+    border-right-color: transparent;
+  }
+}
+
 @keyframes hero-fade-up {
   from {
     opacity: 0;

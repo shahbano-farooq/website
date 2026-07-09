@@ -19,8 +19,95 @@ const PAINTERLY_BG = "#f7f4ef";
 const INK = "#2a3344";
 const ROAD_FILL = "#c4b5a0";
 const ROAD_EDGE = "#8a7a66";
-const PREVIEW_WIDTH = 300;
-const PREVIEW_IMAGE_HEIGHT = 280;
+const PREVIEW_IMAGE_WIDTH = 280;
+const PREVIEW_IMAGE_HEIGHT = 380;
+
+function JourneyCallout({ event }: { event: LifeEvent }) {
+  const accent = categoryColors[event.category];
+  return (
+    <>
+      <span
+        className="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium text-white"
+        style={{ backgroundColor: accent }}
+      >
+        {categoryLabels[event.category]}
+      </span>
+      <h4 className="mt-2 font-serif text-lg font-semibold leading-snug text-foreground">
+        {event.title}
+      </h4>
+      <p className="mt-1 text-sm text-muted">
+        {event.subtitle} · {event.location}
+      </p>
+      <p className="text-xs text-muted">
+        {event.startYear}–{event.endYear}
+      </p>
+      <p className="mt-2.5 text-sm leading-relaxed text-muted">{event.description}</p>
+    </>
+  );
+}
+
+function JourneyHoverPreview({ event }: { event: LifeEvent }) {
+  const src = journeyPanelImages[event.id];
+
+  const panel = event.ongoing ? (
+    <div
+      className="flex flex-col items-center justify-center border-2 border-dashed border-[#7eb8d4] bg-gradient-to-b from-[#e8f4fa] to-[#d4e8f2] text-center text-[#3d5a6e]"
+      style={{
+        width: PREVIEW_IMAGE_WIDTH,
+        height: PREVIEW_IMAGE_HEIGHT,
+        maxWidth: "72vw",
+        maxHeight: "52vh",
+      }}
+    >
+      <svg width="56" height="56" viewBox="0 0 64 64" aria-hidden className="mb-3 opacity-90">
+        <path
+          d="M32 6 C18 16, 8 30, 12 46 C16 58, 28 60, 40 52 C50 46, 54 34, 48 22"
+          fill="none"
+          stroke="#7eb8d4"
+          strokeWidth="2"
+          strokeDasharray="4 3"
+        />
+        <circle cx="48" cy="22" r="4" fill="#c47d3a" />
+      </svg>
+      <span className="font-serif text-base font-semibold">Ongoing exploration</span>
+      <span className="mt-2 px-6 text-sm italic text-[#5c7a8e]">
+        The path ahead is still unfolding
+      </span>
+    </div>
+  ) : src ? (
+    <img
+      src={src}
+      alt={event.title}
+      className="block object-cover"
+      style={{
+        width: PREVIEW_IMAGE_WIDTH,
+        height: PREVIEW_IMAGE_HEIGHT,
+        maxWidth: "38vw",
+        maxHeight: "52vh",
+      }}
+    />
+  ) : null;
+
+  return (
+    <div
+      className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4"
+      aria-live="polite"
+      role="presentation"
+    >
+      <div className="absolute inset-0 bg-[#1a2332]/25 backdrop-blur-[2px]" />
+
+      <div className="relative flex flex-col items-center sm:block">
+        <div className="shrink-0 overflow-hidden rounded-xl border-2 border-border bg-surface shadow-2xl">
+          {panel}
+        </div>
+
+        <div className="journey-callout journey-callout--right mt-4 w-full max-w-sm rounded-xl border border-border bg-surface px-4 py-3.5 shadow-xl sm:absolute sm:left-full sm:top-1/2 sm:mt-0 sm:ml-4 sm:w-[260px] sm:-translate-y-1/2">
+          <JourneyCallout event={event} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 type MilestoneNode = LifeEvent & {
   x: number;
@@ -28,35 +115,67 @@ type MilestoneNode = LifeEvent & {
   side: "left" | "right";
 };
 
+/** Normalize place names so nearby labels (e.g. Lahore / Pakistan) share a region. */
+function locationKey(location: string): string {
+  const loc = location.toLowerCase();
+  if (loc.includes("lahore") || loc === "pakistan") return "pakistan";
+  if (loc.includes("uae")) return "uae";
+  if (loc.includes("calgary")) return "calgary";
+  if (loc.includes("vancouver") || loc === "sfu") return "vancouver";
+  return loc.split(",")[0].trim();
+}
+
+function placeLabel(location: string): string {
+  const key = locationKey(location);
+  if (key === "pakistan") return "Pakistan";
+  if (key === "uae") return "UAE";
+  if (key === "calgary") return "Calgary";
+  if (key === "vancouver") return "Vancouver";
+  return location.split(",")[0];
+}
+
+/** Space milestones by location change: larger gaps when the place changes. */
 function buildRoadPoints(
-  count: number,
+  events: LifeEvent[],
   width: number,
   height: number,
   margin: { top: number; right: number; bottom: number; left: number }
 ) {
   const innerW = width - margin.left - margin.right;
   const innerH = height - margin.top - margin.bottom;
-  const points: { x: number; y: number; side: "left" | "right" }[] = [];
+  const count = events.length;
+  if (count === 0) return [];
 
-  for (let i = 0; i < count; i++) {
-    const t = count === 1 ? 0.5 : i / (count - 1);
+  const SAME_PLACE = 1;
+  const NEW_PLACE = 2.6;
+  const weights: number[] = [0];
+  for (let i = 1; i < count; i++) {
+    const moved =
+      locationKey(events[i].location) !== locationKey(events[i - 1].location);
+    weights.push(weights[i - 1] + (moved ? NEW_PLACE : SAME_PLACE));
+  }
+  const total = weights[count - 1] || 1;
+
+  return events.map((_, i) => {
+    const t = count === 1 ? 0.5 : weights[i] / total;
     const y = margin.top + t * innerH;
     const wave = Math.sin(t * Math.PI * 2.6 + 0.4) * (innerW * 0.3);
     const x = margin.left + innerW * 0.5 + wave;
-    points.push({ x, y, side: wave < 0 ? "left" : "right" });
-  }
-
-  return points;
+    return { x, y, side: (wave < 0 ? "left" : "right") as "left" | "right" };
+  });
 }
 
 export default function LifeTimeline() {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const panelPreviewRef = useRef<HTMLDivElement>(null);
+  const [hovered, setHovered] = useState<LifeEvent | null>(null);
   const [selected, setSelected] = useState<LifeEvent | null>(null);
   const [activeCategory, setActiveCategory] = useState<LifeCategory | null>(null);
   const [size, setSize] = useState({ width: 720, height: 680 });
+
+  useEffect(() => {
+    setHovered(null);
+  }, [activeCategory]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -65,7 +184,8 @@ export default function LifeTimeline() {
       const filtered = activeCategory
         ? lifeEvents.filter((e) => e.category === activeCategory)
         : lifeEvents;
-      const height = Math.max(560, filtered.length * 100 + 120);
+      // Extra height so location-change gaps stay readable
+      const height = Math.max(640, filtered.length * 120 + 160);
       setSize({ width, height });
     };
     const ro = new ResizeObserver(update);
@@ -85,7 +205,7 @@ export default function LifeTimeline() {
       : lifeEvents;
 
     const sorted = filtered.slice().sort((a, b) => a.startYear - b.startYear);
-    const roadPoints = buildRoadPoints(sorted.length, width, height, margin);
+    const roadPoints = buildRoadPoints(sorted, width, height, margin);
 
     const nodes: MilestoneNode[] = sorted.map((event, i) => ({
       ...event,
@@ -157,46 +277,15 @@ export default function LifeTimeline() {
       drawJourneyPanel(panelsG, defs, node, node.x, node.y, node.side);
     });
 
-    function showPanelPreview(d: LifeEvent) {
-      const preview = panelPreviewRef.current;
-      if (!preview) return;
-      preview.style.opacity = "1";
-
-      const meta = `
-        <div style="padding:10px 6px 4px">
-          <strong style="display:block;font-size:14px;line-height:1.3;color:#1a2332;font-family:var(--font-serif),serif">${d.title}</strong>
-          <span style="display:block;margin-top:4px;font-size:12px;color:#5c6574">${d.subtitle} · ${d.startYear}–${d.endYear}</span>
-        </div>
-      `;
-
-      if (d.ongoing) {
-        preview.innerHTML = `
-          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:${PREVIEW_IMAGE_HEIGHT}px;border-radius:6px;background:linear-gradient(180deg,#e8f4fa 0%,#d4e8f2 100%);border:2px dashed #7eb8d4;color:#3d5a6e;text-align:center;padding:24px">
-            <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true" style="margin-bottom:12px;opacity:0.9">
-              <path d="M32 6 C18 16, 8 30, 12 46 C16 58, 28 60, 40 52 C50 46, 54 34, 48 22" fill="none" stroke="#7eb8d4" stroke-width="2" stroke-dasharray="4 3"/>
-              <circle cx="48" cy="22" r="4" fill="#c47d3a"/>
-            </svg>
-            <span style="font-size:15px;font-weight:600;font-family:var(--font-serif),serif">Ongoing exploration</span>
-            <span style="margin-top:6px;font-size:12px;color:#5c7a8e;font-style:italic">The path ahead is still unfolding</span>
-          </div>
-          ${meta}
-        `;
-        return;
-      }
-
-      const src = journeyPanelImages[d.id];
-      if (!src) return;
-      preview.innerHTML = `
-        <img src="${src}" alt="${d.title}" width="${PREVIEW_WIDTH}" style="display:block;width:100%;height:${PREVIEW_IMAGE_HEIGHT}px;object-fit:cover;border-radius:6px" />
-        ${meta}
-      `;
+    function showHoverPreview(d: LifeEvent) {
+      setHovered(d);
     }
 
-    function hidePanelPreview() {
-      if (panelPreviewRef.current) panelPreviewRef.current.style.opacity = "0";
+    function hideHoverPreview() {
+      setHovered(null);
     }
 
-    function highlightMilestone(d: MilestoneNode, event: MouseEvent) {
+    function highlightMilestone(d: MilestoneNode) {
       nodeG.selectAll(".milestone").attr("opacity", (n) =>
         (n as MilestoneNode).id === d.id ? 1 : 0.4
       );
@@ -206,24 +295,21 @@ export default function LifeTimeline() {
       panelsG
         .selectAll<SVGGElement, LifeEvent>(".journey-panel")
         .attr("opacity", (n) => (n.id === d.id ? 1 : 0.3));
-      showPanelPreview(d);
-      showTooltip(event, d);
+      showHoverPreview(d);
     }
 
     function resetHighlight() {
       nodeG.selectAll(".milestone").attr("opacity", 1);
       nodeG.selectAll(".milestone-ring").attr("opacity", 1);
       panelsG.selectAll(".journey-panel").attr("opacity", 1);
-      hidePanelPreview();
-      hideTooltip();
+      hideHoverPreview();
     }
 
     panelsG
       .selectAll<SVGGElement, LifeEvent>(".journey-panel")
-      .on("mouseenter", function (event, d) {
-        highlightMilestone(nodeById.get(d.id)!, event);
+      .on("mouseenter", (_, d) => {
+        highlightMilestone(nodeById.get(d.id)!);
       })
-      .on("mousemove", (event, d) => showTooltip(event, d))
       .on("mouseleave", resetHighlight)
       .on("click", (_, d) => setSelected(d));
 
@@ -239,11 +325,10 @@ export default function LifeTimeline() {
       .attr("stroke", "#fff")
       .attr("stroke-width", 2)
       .style("cursor", "pointer")
-      .on("mouseenter", function (event, d) {
+      .on("mouseenter", function (_, d) {
         d3.select(this).attr("r", (d.highlight ? 11 : 8) + 3);
-        highlightMilestone(d, event);
+        highlightMilestone(d);
       })
-      .on("mousemove", (event, d) => showTooltip(event, d))
       .on("mouseleave", function (_, d) {
         d3.select(this).attr("r", d.highlight ? 11 : 8);
         resetHighlight();
@@ -256,24 +341,38 @@ export default function LifeTimeline() {
       .join("text")
       .attr("class", "year-label")
       .attr("x", (d) => d.x)
-      .attr("y", (d) => d.y + (d.side === "left" ? 32 : -24))
+      .attr("y", (d) => d.y + (d.side === "left" ? 34 : -26))
       .attr("text-anchor", "middle")
       .attr("fill", INK)
-      .attr("font-size", 9)
-      .attr("font-weight", 600)
+      .attr("font-size", 12)
+      .attr("font-weight", 800)
+      .attr("paint-order", "stroke")
+      .attr("stroke", PAINTERLY_BG)
+      .attr("stroke-width", 3)
       .text((d) => d.startYear);
+
+    // Show place when it changes (or on the first node) so moves stand out
+    const placeNodes = nodes.filter(
+      (d, i) =>
+        i === 0 ||
+        locationKey(d.location) !== locationKey(nodes[i - 1].location)
+    );
 
     nodeG
       .selectAll(".place-label")
-      .data(nodes.filter((d) => d.highlight))
+      .data(placeNodes)
       .join("text")
       .attr("class", "place-label")
       .attr("x", (d) => d.x)
-      .attr("y", (d) => d.y + (d.side === "left" ? 44 : -12))
+      .attr("y", (d) => d.y + (d.side === "left" ? 50 : -12))
       .attr("text-anchor", "middle")
-      .attr("fill", "#8a7f72")
-      .attr("font-size", 8)
-      .text((d) => d.location.split(",")[0]);
+      .attr("fill", INK)
+      .attr("font-size", 11)
+      .attr("font-weight", 700)
+      .attr("paint-order", "stroke")
+      .attr("stroke", PAINTERLY_BG)
+      .attr("stroke-width", 3)
+      .text((d) => placeLabel(d.location));
 
     g.append("text")
       .attr("x", margin.left)
@@ -291,25 +390,6 @@ export default function LifeTimeline() {
       .attr("font-size", 10)
       .attr("font-weight", 500)
       .text("Vancouver · Now");
-
-    function showTooltip(event: MouseEvent, d: LifeEvent) {
-      const tooltip = tooltipRef.current;
-      const container = containerRef.current;
-      if (!tooltip || !container) return;
-      tooltip.style.opacity = "1";
-      tooltip.innerHTML = `
-        <h4>${d.title}</h4>
-        <p style="font-size:12px;margin-bottom:4px">${d.subtitle} · ${d.location}</p>
-        <p>${d.startYear}–${d.endYear}</p>
-      `;
-      const rect = container.getBoundingClientRect();
-      tooltip.style.left = `${Math.min(event.clientX - rect.left + 12, rect.width - 290)}px`;
-      tooltip.style.top = `${Math.max(event.clientY - rect.top - 12, 8)}px`;
-    }
-
-    function hideTooltip() {
-      if (tooltipRef.current) tooltipRef.current.style.opacity = "0";
-    }
   }, [activeCategory, size]);
 
   return (
@@ -357,16 +437,12 @@ export default function LifeTimeline() {
           role="img"
           aria-label="Winding road life journey visualization"
         />
-        <div
-          ref={panelPreviewRef}
-          className="pointer-events-none absolute left-1/2 top-1/2 z-30 w-[min(300px,90%)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-surface p-2 shadow-2xl transition-opacity duration-200"
-          style={{ opacity: 0 }}
-        />
-        <div ref={tooltipRef} className="life-timeline-tooltip z-20" style={{ opacity: 0 }} />
         <p className="border-t border-border/60 px-4 py-3 text-center text-xs text-muted">
           A winding road from Lahore (1999) to Vancouver — each milestone has an illustrated panel from that chapter
         </p>
       </div>
+
+      {hovered && <JourneyHoverPreview event={hovered} />}
 
       {selected && (
         <div className="mt-6 rounded-lg border border-border bg-accent-light/30 p-5">

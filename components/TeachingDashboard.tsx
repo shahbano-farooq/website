@@ -319,21 +319,35 @@ export default function TeachingDashboard() {
 
     hub
       .append("circle")
-      .attr("r", 22)
+      .attr("r", 26)
       .attr("fill", (d) => teachingTopicColors[d.topic])
-      .attr("opacity", 0.12)
+      .attr("opacity", 0.14)
       .attr("stroke", (d) => teachingTopicColors[d.topic])
-      .attr("stroke-width", 1)
-      .attr("stroke-opacity", 0.45);
+      .attr("stroke-width", 1.5)
+      .attr("stroke-opacity", 0.55);
 
-    hub
-      .append("text")
-      .attr("text-anchor", "middle")
-      .attr("dy", 3)
-      .attr("fill", (d) => teachingTopicColors[d.topic])
-      .attr("font-size", 9)
-      .attr("font-weight", 600)
-      .text((d) => d.label.split(" ")[0]);
+    hub.each(function (d) {
+      const words = d.label.split(" ");
+      const text = d3
+        .select(this)
+        .append("text")
+        .attr("text-anchor", "middle")
+        .attr("fill", teachingTopicColors[d.topic])
+        .attr("font-size", words.length > 1 ? 8.5 : 10)
+        .attr("font-weight", 700);
+
+      if (words.length === 1) {
+        text.attr("dy", 4).text(d.label);
+      } else {
+        words.forEach((word, i) => {
+          text
+            .append("tspan")
+            .attr("x", 0)
+            .attr("dy", i === 0 ? -2 : 11)
+            .text(word);
+        });
+      }
+    });
 
     const node = g
       .append("g")
@@ -357,6 +371,28 @@ export default function TeachingDashboard() {
         d3.select(this).attr("r", d.r);
         hideTooltip();
       });
+
+    // Label first offering of each ML course so titles like Neural Networks stay readable
+    const courseLabels = g
+      .append("g")
+      .attr("class", "course-labels")
+      .selectAll("text")
+      .data(
+        courseNodes.filter(
+          (d) => d.topic === "Machine Learning" && d.lineageIndex === 0
+        )
+      )
+      .join("text")
+      .attr("text-anchor", "middle")
+      .attr("dy", (d) => d.r + 12)
+      .attr("fill", teachingTopicColors["Machine Learning"])
+      .attr("font-size", 9)
+      .attr("font-weight", 700)
+      .attr("paint-order", "stroke")
+      .attr("stroke", PAINTERLY_BG)
+      .attr("stroke-width", 3)
+      .style("pointer-events", "none")
+      .text((d) => d.title);
 
     const simulation = d3
       .forceSimulation<GraphNode>(nodes)
@@ -422,6 +458,10 @@ export default function TeachingDashboard() {
       hub.attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
 
       node.attr("cx", (d) => d.x ?? 0).attr("cy", (d) => d.y ?? 0);
+
+      courseLabels
+        .attr("x", (d) => d.x ?? 0)
+        .attr("y", (d) => d.y ?? 0);
     });
 
     simulationRef.current = simulation;
@@ -459,9 +499,14 @@ export default function TeachingDashboard() {
     const yearTopicCounts = years.map((year) => {
       const row: Record<string, number | string> = { year };
       stackKeys.forEach((topic) => {
-        const students = teachingRecords
-          .filter((r) => r.year === year && r.topic === topic)
-          .reduce((sum, r) => sum + getStudentsForCourse(r.code, r.term), 0);
+        const offerings = teachingRecords.filter(
+          (r) => r.year === year && r.topic === topic
+        );
+        // Use enrollment when known; otherwise count each offering so thin topics stay visible
+        const students = offerings.reduce((sum, r) => {
+          const enrolled = getStudentsForCourse(r.code, r.term);
+          return sum + (enrolled > 0 ? enrolled : 24);
+        }, 0);
         row[topic] = students;
       });
       return row;
@@ -509,10 +554,16 @@ export default function TeachingDashboard() {
       .attr("class", "stream-layer")
       .attr("d", area)
       .attr("fill", (d) => teachingTopicColors[d.key as TeachingTopic])
-      .attr("opacity", 0.72)
+      .attr("opacity", (d) =>
+        d.key === "Machine Learning" ? 0.95 : 0.72
+      )
       .attr("stroke", (d) => teachingTopicColors[d.key as TeachingTopic])
-      .attr("stroke-width", 0.5)
-      .attr("stroke-opacity", 0.4);
+      .attr("stroke-width", (d) =>
+        d.key === "Machine Learning" ? 1.5 : 0.5
+      )
+      .attr("stroke-opacity", (d) =>
+        d.key === "Machine Learning" ? 0.85 : 0.4
+      );
 
     g.append("line")
       .attr("x1", 0)

@@ -27,7 +27,7 @@ export default function HomePage() {
       </section>
 
       <section className="mx-auto max-w-5xl px-6 py-16">
-        <SectionHeading title="About" />
+        <SectionHeading title="About Me" />
         <div className="max-w-none text-muted">
           <p className="leading-relaxed">
             I am a PhD student at Simon Fraser University&apos;s School of Interactive

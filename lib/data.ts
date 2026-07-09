@@ -353,12 +353,18 @@ export type TeachingTopic =
 export const teachingTopicColors: Record<TeachingTopic, string> = {
   Programming: "#3d6b8c",
   Algorithms: "#5a8f6e",
-  "Machine Learning": "#9b6b3d",
+  "Machine Learning": "#5c2e0e",
   "IT & Data": "#7a6b9b",
 };
 
 function topicFromCode(code: string, title: string): TeachingTopic {
-  if (code.startsWith("ICS 351")) return "Machine Learning";
+  if (
+    code.startsWith("ICS 351") ||
+    code.startsWith("ICS 352") ||
+    title.toLowerCase().includes("machine learning") ||
+    title.toLowerCase().includes("neural network")
+  )
+    return "Machine Learning";
   if (code.startsWith("ICS 221") || code.startsWith("ICB 103")) return "Algorithms";
   if (
     code.startsWith("ICS 220") ||
@@ -381,7 +387,9 @@ export const teachingRecords: TeachingRecord[] = (
   [
   { id: "ics221", code: "ICS 221", title: "Data Structures and Algorithms", term: "Spring 2025", year: 2025, semester: "Spring", role: "Instructor", institution: "Zayed University" },
   { id: "ics340", code: "ICS 340", title: "Database Systems", term: "Spring 2025", year: 2025, semester: "Spring", role: "Instructor", institution: "Zayed University" },
+  { id: "ics352-s25", code: "ICS 352", title: "Neural Networks", term: "Spring 2025", year: 2025, semester: "Spring", role: "Instructor", institution: "Zayed University" },
   { id: "ics351", code: "ICS 351", title: "Machine Learning", term: "Fall 2024", year: 2024, semester: "Fall", role: "Instructor", institution: "Zayed University" },
+  { id: "ics352-f24", code: "ICS 352", title: "Neural Networks", term: "Fall 2024", year: 2024, semester: "Fall", role: "Instructor", institution: "Zayed University" },
   { id: "icb103-f24", code: "ICB 103", title: "Applied Algorithmic Thinking", term: "Fall 2024", year: 2024, semester: "Fall", role: "Instructor", institution: "Zayed University" },
   { id: "ics220-s24", code: "ICS 220", title: "Programming Fundamentals", term: "Spring 2024", year: 2024, semester: "Spring", role: "Instructor", institution: "Zayed University" },
   { id: "ics220-f23", code: "ICS 220", title: "Programming Fundamentals", term: "Fall 2023", year: 2023, semester: "Fall", role: "Instructor", institution: "Zayed University" },
