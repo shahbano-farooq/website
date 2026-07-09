@@ -60,7 +60,13 @@ function JourneyCallout({ event }: { event: LifeEvent }) {
   );
 }
 
-function JourneyHoverPreview({ event }: { event: LifeEvent }) {
+function JourneyHoverPreview({
+  event,
+  active = false,
+}: {
+  event: LifeEvent;
+  active?: boolean;
+}) {
   const src = journeyPanelImages[event.id];
 
   const panel = event.ongoing ? (
@@ -100,7 +106,9 @@ function JourneyHoverPreview({ event }: { event: LifeEvent }) {
 
   return (
     <div
-      className="rounded-xl border border-border bg-surface/95 p-3 shadow-lg backdrop-blur-sm"
+      className={`rounded-xl border bg-surface/95 p-3 shadow-lg backdrop-blur-sm ${
+        active ? "border-accent ring-2 ring-accent/30" : "border-border"
+      }`}
       aria-live="polite"
     >
       <div className="overflow-hidden rounded-lg border border-border bg-[#fffef5]">
@@ -441,7 +449,7 @@ export default function LifeTimeline() {
         .attr("stroke-width", STRIP_WIDTH)
         .attr("stroke-linecap", "butt")
         .attr("stroke-linejoin", "round")
-        .attr("opacity", 0.95);
+        .attr("opacity", 1);
 
       stripsG
         .append("path")
@@ -503,7 +511,6 @@ export default function LifeTimeline() {
       }
     }
 
-    const nodeById = new Map(nodes.map((n) => [n.id, n]));
     const defs = svg.append("defs");
     const panelsG = g.append("g").attr("class", "panels");
     nodes.forEach((node) => {
@@ -517,38 +524,13 @@ export default function LifeTimeline() {
       ? nodes.find((n) => n.id === defaultPreview.id)
       : undefined;
 
-    function applyChapterHighlight(d: MilestoneNode) {
-      stripsG
-        .selectAll<SVGPathElement, LifeEvent>(".journey-strip")
-        .attr("opacity", (n) => (n.id === d.id ? 1 : 0.28));
-      nodeG.selectAll(".path-marker").attr("opacity", (n) =>
-        (n as MilestoneNode).id === d.id ? 1 : 0.35
-      );
-      panelsG
-        .selectAll<SVGGElement, LifeEvent>(".journey-panel")
-        .attr("opacity", (n) => (n.id === d.id ? 1 : 0.3));
-    }
-
-    function clearChapterHighlight() {
-      stripsG.selectAll(".journey-strip").attr("opacity", 0.95);
-      nodeG.selectAll(".path-marker").attr("opacity", 1);
-      panelsG.selectAll(".journey-panel").attr("opacity", 1);
-    }
-
-    function showHoverPreview(d: LifeEvent) {
+    function showPreview(d: LifeEvent) {
       setHovered(d);
     }
 
-    function highlightChapter(d: MilestoneNode) {
-      applyChapterHighlight(d);
-      showHoverPreview(d);
-    }
-
-    function resetHighlight() {
-      clearChapterHighlight();
+    function resetPreview() {
       if (defaultNode) {
-        applyChapterHighlight(defaultNode);
-        showHoverPreview(defaultNode);
+        showPreview(defaultNode);
       } else {
         setHovered(null);
       }
@@ -556,14 +538,14 @@ export default function LifeTimeline() {
 
     stripsG
       .selectAll<SVGPathElement, LifeEvent>(".journey-strip-hit")
-      .on("mouseenter", (_, d) => highlightChapter(nodeById.get(d.id)!))
-      .on("mouseleave", resetHighlight)
+      .on("mouseenter", (_, d) => showPreview(d))
+      .on("mouseleave", resetPreview)
       .on("click", (_, d) => setSelected(d));
 
     panelsG
       .selectAll<SVGGElement, LifeEvent>(".journey-panel")
-      .on("mouseenter", (_, d) => highlightChapter(nodeById.get(d.id)!))
-      .on("mouseleave", resetHighlight)
+      .on("mouseenter", (_, d) => showPreview(d))
+      .on("mouseleave", resetPreview)
       .on("click", (_, d) => setSelected(d));
 
     nodeG
@@ -579,8 +561,8 @@ export default function LifeTimeline() {
       .attr("stroke-width", s(2))
       .attr("paint-order", "stroke")
       .style("cursor", "pointer")
-      .on("mouseenter", (_, d) => highlightChapter(d))
-      .on("mouseleave", resetHighlight)
+      .on("mouseenter", (_, d) => showPreview(d))
+      .on("mouseleave", resetPreview)
       .on("click", (_, d) => setSelected(d));
 
     nodeG
@@ -622,10 +604,6 @@ export default function LifeTimeline() {
       .attr("stroke", PAINTERLY_BG)
       .attr("stroke-width", s(3))
       .text((d) => placeLabel(d.location));
-
-    if (defaultNode) {
-      applyChapterHighlight(defaultNode);
-    }
 
     if (!activeCategory && nodes.length > 0 && nodes[nodes.length - 1].id === "phd") {
       const last = nodes[nodes.length - 1];
@@ -677,6 +655,21 @@ export default function LifeTimeline() {
         )}
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted">
+        <span className="font-medium text-foreground">Strip colors:</span>
+        {(["education", "industry", "teaching", "research"] as LifeCategory[]).map(
+          (cat) => (
+            <span key={cat} className="inline-flex items-center gap-1.5">
+              <span
+                className="inline-block h-2.5 w-6 rounded-full"
+                style={{ backgroundColor: categoryColors[cat] }}
+              />
+              {categoryLabels[cat]}
+            </span>
+          )
+        )}
+      </div>
+
       <div className="flex flex-col items-stretch gap-4 xl:flex-row xl:items-start xl:gap-6">
         <div
           ref={containerRef}
@@ -696,7 +689,7 @@ export default function LifeTimeline() {
 
         {hovered && (
           <aside className="w-full shrink-0 xl:sticky xl:top-24 xl:w-72">
-            <JourneyHoverPreview event={hovered} />
+            <JourneyHoverPreview event={hovered} active={true} />
           </aside>
         )}
       </div>
