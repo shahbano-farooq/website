@@ -58,7 +58,7 @@ export default function HeroSection() {
         className="absolute inset-0 h-full w-full object-cover object-[center_30%]"
       />
 
-      <div className="relative z-10 flex flex-1 flex-col justify-end">
+      <div className="relative z-10 flex flex-1 flex-col justify-end pb-8 sm:pb-12">
         <div
           ref={introRef}
           className={`sticky bottom-0 w-full transition-all ${
