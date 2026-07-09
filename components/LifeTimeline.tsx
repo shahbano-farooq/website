@@ -148,13 +148,23 @@ type SpiralLayout = {
 };
 
 const NODE_MARKER_R = s(4);
-const PANEL_GAP = s(2);
+const PANEL_GAP = s(1);
 const JOURNEY_MAX_HEIGHT_RATIO = 0.58 * JOURNEY_SCALE;
 const JOURNEY_MAX_WIDTH_PX = s(768);
 const JOURNEY_MAX_HEIGHT_PX = s(560);
 
-function panelDistance(t: number) {
-  return NODE_MARKER_R + PANEL_GAP + JOURNEY_PANEL_H / 2 + t * s(1.5);
+/** Pull inner-spiral chapter panels closer to their nodes. */
+const TIGHTER_PANEL_PULL: Partial<Record<LifeEvent["id"], number>> = {
+  bsc: s(8),
+  "esp-gits": s(7),
+  etisalat: s(6),
+  msc: s(5),
+};
+
+function panelDistance(t: number, eventId?: string) {
+  const base = NODE_MARKER_R + PANEL_GAP + JOURNEY_PANEL_H / 2 + t * s(1);
+  const pull = eventId ? (TIGHTER_PANEL_PULL[eventId] ?? 0) : 0;
+  return Math.max(NODE_MARKER_R + s(2), base - pull);
 }
 
 function drawOriginFlowerBud(
@@ -277,7 +287,7 @@ function buildSpiralLayout(layoutWidth: number): SpiralLayout {
         type: "radial" as const,
         angle,
         distance: panelDistance(t),
-      },
+      } satisfies PanelPlacement,
     };
   };
 
@@ -459,7 +469,10 @@ export default function LifeTimeline() {
         x: pt.x,
         y: pt.y,
         angle: pt.angle,
-        placement: pt.placement,
+        placement: {
+          ...pt.placement,
+          distance: panelDistance(tMid, event.id),
+        },
         tMid,
         t0,
         t1,
