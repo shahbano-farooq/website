@@ -45,7 +45,9 @@ export function filterJourneyEvents(category: LifeCategory | null): LifeEvent[] 
     return lifeEvents.filter((e) => MAIN_JOURNEY_IDS.has(e.id));
   }
   return lifeEvents.filter(
-    (e) => e.journeyGroups?.includes(category) ?? e.category === category
+    (e) =>
+      e.category === category ||
+      (e.journeyGroups?.includes(category) ?? false)
   );
 }
 

@@ -146,7 +146,7 @@ export const lifeEvents: LifeEvent[] = [
     id: "zayed",
     title: "Instructor",
     subtitle: "Zayed University",
-    startYear: 2015,
+    startYear: 2014,
     endYear: 2025,
     category: "teaching",
     location: "UAE",
@@ -178,6 +178,7 @@ export const lifeEvents: LifeEvent[] = [
       "Research focus on HCI and visualization — generative tools for co-design and community impact.",
     highlight: true,
     ongoing: true,
+    journeyGroups: ["education"],
   },
   {
     id: "taip",
