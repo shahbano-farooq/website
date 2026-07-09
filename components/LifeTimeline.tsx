@@ -69,7 +69,8 @@ function JourneyHoverPreview({
 }) {
   const src = journeyPanelImages[event.id];
 
-  const panel = event.ongoing ? (
+  const panel =
+    event.ongoing && !src ? (
     <div
       className="flex flex-col items-center justify-center border-2 border-dashed border-[#7eb8d4] bg-gradient-to-b from-[#e8f4fa] to-[#d4e8f2] text-center text-[#3d5a6e]"
       style={{
@@ -164,13 +165,15 @@ function buildSpiralLayout(layoutWidth: number): SpiralLayout {
   const labelPad = s(20);
   const maxR = layoutWidth / 2 - panelPad;
   const minR = Math.max(s(30), maxR * 0.1);
-  const turns = 2;
+  const turns = 2.4;
   const totalAngle = turns * Math.PI * 2;
-  const startAngle = -Math.PI / 2;
+  const startAngle = -Math.PI;
+  const shellGrowth = 1.72;
 
   const pointAt = (t: number) => {
     const angle = startAngle + t * totalAngle;
-    const r = minR + t * (maxR - minR);
+    const shellT = (Math.pow(shellGrowth, t) - 1) / (shellGrowth - 1);
+    const r = minR + shellT * (maxR - minR);
     return {
       x: cx + r * Math.cos(angle),
       y: cy + r * Math.sin(angle),
@@ -183,7 +186,7 @@ function buildSpiralLayout(layoutWidth: number): SpiralLayout {
     };
   };
 
-  const pathSamples = 220;
+  const pathSamples = 280;
   const pathPoints: PathPoint[] = Array.from({ length: pathSamples + 1 }, (_, i) => {
     const t = i / pathSamples;
     const { x, y } = pointAt(t);
@@ -287,6 +290,20 @@ function placeLabel(location: string): string {
   return location.split(",")[0];
 }
 
+function placeLabelForNode(node: MilestoneNode): string {
+  if (node.id === "esp-gits") return "Pakistan";
+  if (node.id === "etisalat") return "UAE";
+  return placeLabel(node.location);
+}
+
+function shouldShowPlaceLabel(node: MilestoneNode, index: number, nodes: MilestoneNode[]) {
+  if (node.id === "esp-gits" || node.id === "etisalat") return true;
+  return (
+    index === 0 ||
+    locationKey(node.location) !== locationKey(nodes[index - 1].location)
+  );
+}
+
 function defaultPreviewEvent(category: LifeCategory | null): LifeEvent | null {
   if (!category) {
     return lifeEvents.find((e) => e.id === "phd") ?? null;
@@ -374,7 +391,7 @@ export default function LifeTimeline() {
 
     const spiralLine = d3
       .line<PathPoint>()
-      .curve(d3.curveCatmullRom.alpha(0.5))
+      .curve(d3.curveCatmullRom.alpha(0.62))
       .x((d) => d.x)
       .y((d) => d.y);
 
@@ -582,11 +599,7 @@ export default function LifeTimeline() {
       .attr("stroke-width", s(3))
       .text((d) => yearRangeLabel(d));
 
-    const placeNodes = nodes.filter(
-      (d, i) =>
-        i === 0 ||
-        locationKey(d.location) !== locationKey(nodes[i - 1].location)
-    );
+    const placeNodes = nodes.filter((d, i) => shouldShowPlaceLabel(d, i, nodes));
 
     nodeG
       .selectAll(".place-label")
@@ -603,7 +616,7 @@ export default function LifeTimeline() {
       .attr("paint-order", "stroke")
       .attr("stroke", PAINTERLY_BG)
       .attr("stroke-width", s(3))
-      .text((d) => placeLabel(d.location));
+      .text((d) => placeLabelForNode(d));
 
     if (!activeCategory && nodes.length > 0 && nodes[nodes.length - 1].id === "phd") {
       const last = nodes[nodes.length - 1];
@@ -652,21 +665,6 @@ export default function LifeTimeline() {
           >
             Show all
           </button>
-        )}
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted">
-        <span className="font-medium text-foreground">Strip colors:</span>
-        {(["education", "industry", "teaching", "research"] as LifeCategory[]).map(
-          (cat) => (
-            <span key={cat} className="inline-flex items-center gap-1.5">
-              <span
-                className="inline-block h-2.5 w-6 rounded-full"
-                style={{ backgroundColor: categoryColors[cat] }}
-              />
-              {categoryLabels[cat]}
-            </span>
-          )
         )}
       </div>
 

@@ -131,12 +131,12 @@ export function drawJourneyPanel(
   y: number,
   placement: PanelPlacement
 ) {
-  if (event.ongoing) {
+  const imageSrc = journeyPanelImages[event.id];
+  if (event.ongoing && !imageSrc) {
     drawOngoingExplorationPanel(parent, event, x, y, placement);
     return;
   }
 
-  const imageSrc = journeyPanelImages[event.id];
   if (!imageSrc) return;
 
   const { px, py } = panelPosition(x, y, placement);
