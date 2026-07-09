@@ -22,6 +22,15 @@ function panelPosition(x: number, y: number, placement: PanelPlacement) {
   return { px: pcx - JOURNEY_PANEL_W / 2, py: pcy - JOURNEY_PANEL_H / 2 };
 }
 
+export function panelCenterFrom(
+  x: number,
+  y: number,
+  placement: PanelPlacement
+): { cx: number; cy: number } {
+  const { px, py } = panelPosition(x, y, placement);
+  return { cx: px + JOURNEY_PANEL_W / 2, cy: py + JOURNEY_PANEL_H / 2 };
+}
+
 export function panelTransformFor(
   x: number,
   y: number,

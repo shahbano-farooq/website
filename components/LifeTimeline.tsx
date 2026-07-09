@@ -10,9 +10,11 @@ import {
   type LifeEvent,
 } from "@/lib/data";
 import {
+  JOURNEY_PANEL_H,
   JOURNEY_PANEL_W,
   drawJourneyPanel,
   journeyPanelImages,
+  panelCenterFrom,
   type PanelPlacement,
 } from "@/lib/drawJourneyPanel";
 
@@ -135,19 +137,35 @@ type SpiralLayout = {
   cy: number;
   points: { x: number; y: number; angle: number; placement: PanelPlacement }[];
   pathPoints: { x: number; y: number }[];
+  labelPad: number;
 };
 
+const NODE_RING_R = 16;
+const PANEL_GAP = 18;
+
+function filterJourneyEvents(category: LifeCategory | null): LifeEvent[] {
+  if (!category) return lifeEvents;
+  return lifeEvents.filter(
+    (e) => e.journeyGroups?.includes(category) ?? e.category === category
+  );
+}
+
+function panelDistance(t: number) {
+  return NODE_RING_R + PANEL_GAP + JOURNEY_PANEL_H / 2 + t * 18;
+}
+
 /** Archimedean spiral: oldest at center, latest on the outer ring. */
-function buildSpiralLayout(events: LifeEvent[], size: number): SpiralLayout {
+function buildSpiralLayout(events: LifeEvent[], layoutWidth: number): SpiralLayout {
   const count = events.length;
-  const cx = size / 2;
-  const cy = size / 2;
-  const panelPad = JOURNEY_PANEL_W + 40;
-  const maxR = size / 2 - panelPad;
-  const minR = Math.max(36, maxR * 0.1);
+  const cx = layoutWidth / 2;
+  const cy = layoutWidth / 2;
+  const panelPad = JOURNEY_PANEL_W / 2 + 36;
+  const labelPad = 30;
+  const maxR = layoutWidth / 2 - panelPad;
+  const minR = Math.max(40, maxR * 0.12);
   const weights = milestoneWeights(events);
   const total = weights[count - 1] || 1;
-  const turns = Math.max(1.4, Math.min(2.6, count * 0.24));
+  const turns = Math.max(1.4, Math.min(2.6, count * 0.28));
   const totalAngle = turns * Math.PI * 2;
   const startAngle = -Math.PI / 2;
 
@@ -163,7 +181,7 @@ function buildSpiralLayout(events: LifeEvent[], size: number): SpiralLayout {
       placement: {
         type: "radial" as const,
         angle,
-        distance: 58 + t * 28,
+        distance: panelDistance(t),
       },
     };
   };
@@ -175,23 +193,67 @@ function buildSpiralLayout(events: LifeEvent[], size: number): SpiralLayout {
     return { x, y };
   });
 
-  const points =
-    count === 0
-      ? []
-      : events.map((_, i) => pointAt(tAt(i)));
+  const points = count === 0 ? [] : events.map((_, i) => pointAt(tAt(i)));
 
-  return { cx, cy, points, pathPoints };
+  return { cx, cy, points, pathPoints, labelPad };
 }
 
-function radialLabelOffset(
-  x: number,
-  y: number,
-  angle: number,
-  distance: number
+function computeJourneyBounds(
+  nodes: MilestoneNode[],
+  spiral: SpiralLayout,
+  showOrigin: boolean
 ) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  const pad = 16;
+
+  const include = (x: number, y: number, radius = 0) => {
+    minX = Math.min(minX, x - radius);
+    minY = Math.min(minY, y - radius);
+    maxX = Math.max(maxX, x + radius);
+    maxY = Math.max(maxY, y + radius);
+  };
+
+  if (showOrigin) {
+    include(spiral.cx, spiral.cy, 34);
+  }
+
+  for (const node of nodes) {
+    include(node.x, node.y, NODE_RING_R + 4);
+    const { cx, cy } = panelCenterFrom(node.x, node.y, node.placement);
+    include(cx, cy, JOURNEY_PANEL_W / 2 + 4);
+    include(cx, cy, JOURNEY_PANEL_H / 2 + 4);
+    const labels = labelsAbovePanel(node);
+    include(labels.year.x, labels.year.y, 8);
+    include(labels.place.x, labels.place.y, 8);
+  }
+
+  if (nodes.length > 0) {
+    const last = nodes[nodes.length - 1];
+    const { cx, cy } = panelCenterFrom(last.x, last.y, last.placement);
+    include(cx, cy + JOURNEY_PANEL_H / 2 + 20, 12);
+  }
+
+  if (!Number.isFinite(minX)) {
+    return { minX: 0, minY: 0, maxX: spiral.cx * 2, maxY: spiral.cy * 2 };
+  }
+
   return {
-    x: x + Math.cos(angle) * distance,
-    y: y + Math.sin(angle) * distance,
+    minX: minX - pad,
+    minY: minY - pad - spiral.labelPad,
+    maxX: maxX + pad,
+    maxY: maxY + pad,
+  };
+}
+
+function labelsAbovePanel(node: MilestoneNode) {
+  const { cx, cy } = panelCenterFrom(node.x, node.y, node.placement);
+  const panelTop = cy - JOURNEY_PANEL_H / 2;
+  return {
+    year: { x: cx, y: panelTop - 22 },
+    place: { x: cx, y: panelTop - 8 },
   };
 }
 
@@ -220,7 +282,7 @@ export default function LifeTimeline() {
   const [hovered, setHovered] = useState<LifeEvent | null>(null);
   const [selected, setSelected] = useState<LifeEvent | null>(null);
   const [activeCategory, setActiveCategory] = useState<LifeCategory | null>(null);
-  const [size, setSize] = useState({ width: 720, height: 680 });
+  const [width, setWidth] = useState(720);
 
   useEffect(() => {
     setHovered(null);
@@ -229,8 +291,7 @@ export default function LifeTimeline() {
   useEffect(() => {
     if (!containerRef.current) return;
     const update = () => {
-      const dim = Math.min(containerRef.current!.clientWidth, 720);
-      setSize({ width: dim, height: dim });
+      setWidth(containerRef.current!.clientWidth);
     };
     const ro = new ResizeObserver(update);
     ro.observe(containerRef.current);
@@ -241,15 +302,10 @@ export default function LifeTimeline() {
   useEffect(() => {
     if (!svgRef.current) return;
 
-    const { width, height } = size;
-    const dim = Math.min(width, height);
-
-    const filtered = activeCategory
-      ? lifeEvents.filter((e) => e.category === activeCategory)
-      : lifeEvents;
+    const filtered = filterJourneyEvents(activeCategory);
 
     const sorted = filtered.slice().sort((a, b) => a.startYear - b.startYear);
-    const spiral = buildSpiralLayout(sorted, dim);
+    const spiral = buildSpiralLayout(sorted, width);
 
     const nodes: MilestoneNode[] = sorted.map((event, i) => ({
       ...event,
@@ -259,9 +315,19 @@ export default function LifeTimeline() {
       placement: spiral.points[i].placement,
     }));
 
+    const showOrigin = !activeCategory;
+    const bounds = computeJourneyBounds(nodes, spiral, showOrigin);
+    const vbW = bounds.maxX - bounds.minX;
+    const vbH = bounds.maxY - bounds.minY;
+    const svgHeight = Math.max(320, width * (vbH / vbW));
+
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
-    svg.attr("width", width).attr("height", height);
+    svg
+      .attr("width", width)
+      .attr("height", svgHeight)
+      .attr("viewBox", `${bounds.minX} ${bounds.minY} ${vbW} ${vbH}`)
+      .attr("preserveAspectRatio", "xMidYMid meet");
 
     const g = svg.append("g");
 
@@ -301,33 +367,41 @@ export default function LifeTimeline() {
         .attr("opacity", 0.85);
     }
 
-    g.append("circle")
-      .attr("cx", spiral.cx)
-      .attr("cy", spiral.cy)
-      .attr("r", 28)
-      .attr("fill", "#fffef5")
-      .attr("stroke", ROAD_EDGE)
-      .attr("stroke-width", 1.5)
-      .attr("opacity", 0.9);
+    if (showOrigin) {
+      g.append("circle")
+        .attr("cx", spiral.cx)
+        .attr("cy", spiral.cy)
+        .attr("r", 28)
+        .attr("fill", "#fffef5")
+        .attr("stroke", ROAD_EDGE)
+        .attr("stroke-width", 1.5)
+        .attr("opacity", 0.9);
 
-    g.append("text")
-      .attr("x", spiral.cx)
-      .attr("y", spiral.cy - 4)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#8a7f72")
-      .attr("font-size", 9)
-      .attr("font-weight", 600)
-      .text("1999");
+      g.append("text")
+        .attr("x", spiral.cx)
+        .attr("y", spiral.cy - 4)
+        .attr("text-anchor", "middle")
+        .attr("fill", "#8a7f72")
+        .attr("font-size", 9)
+        .attr("font-weight", 600)
+        .text("1999");
 
-    g.append("text")
-      .attr("x", spiral.cx)
-      .attr("y", spiral.cy + 10)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#8a7f72")
-      .attr("font-size", 8)
-      .text("Lahore");
+      g.append("text")
+        .attr("x", spiral.cx)
+        .attr("y", spiral.cy + 10)
+        .attr("text-anchor", "middle")
+        .attr("fill", "#8a7f72")
+        .attr("font-size", 8)
+        .text("Lahore");
+    }
 
     const nodeById = new Map(nodes.map((n) => [n.id, n]));
+    const defs = svg.append("defs");
+    const panelsG = g.append("g").attr("class", "panels");
+    nodes.forEach((node) => {
+      drawJourneyPanel(panelsG, defs, node, node.x, node.y, node.placement);
+    });
+
     const nodeG = g.append("g").attr("class", "nodes");
 
     nodeG
@@ -337,16 +411,10 @@ export default function LifeTimeline() {
       .attr("class", "milestone-ring")
       .attr("cx", (d) => d.x)
       .attr("cy", (d) => d.y)
-      .attr("r", 16)
+      .attr("r", NODE_RING_R)
       .attr("fill", "#fffef5")
       .attr("stroke", ROAD_EDGE)
       .attr("stroke-width", 2);
-
-    const defs = svg.append("defs");
-    const panelsG = g.append("g").attr("class", "panels");
-    nodes.forEach((node) => {
-      drawJourneyPanel(panelsG, defs, node, node.x, node.y, node.placement);
-    });
 
     function showHoverPreview(d: LifeEvent) {
       setHovered(d);
@@ -394,7 +462,8 @@ export default function LifeTimeline() {
       .attr("r", (d) => (d.highlight ? 11 : 8))
       .attr("fill", (d) => categoryColors[d.category])
       .attr("stroke", "#fff")
-      .attr("stroke-width", 2)
+      .attr("stroke-width", 3)
+      .attr("paint-order", "stroke")
       .style("cursor", "pointer")
       .on("mouseenter", function (_, d) {
         d3.select(this).attr("r", (d.highlight ? 11 : 8) + 3);
@@ -411,10 +480,10 @@ export default function LifeTimeline() {
       .data(nodes)
       .join("text")
       .attr("class", "year-label")
-      .attr("x", (d) => radialLabelOffset(d.x, d.y, d.angle, 22).x)
-      .attr("y", (d) => radialLabelOffset(d.x, d.y, d.angle, 22).y)
+      .attr("x", (d) => labelsAbovePanel(d).year.x)
+      .attr("y", (d) => labelsAbovePanel(d).year.y)
       .attr("text-anchor", "middle")
-      .attr("dominant-baseline", "middle")
+      .attr("dominant-baseline", "auto")
       .attr("fill", INK)
       .attr("font-size", 12)
       .attr("font-weight", 800)
@@ -434,10 +503,10 @@ export default function LifeTimeline() {
       .data(placeNodes)
       .join("text")
       .attr("class", "place-label")
-      .attr("x", (d) => radialLabelOffset(d.x, d.y, d.angle, 36).x)
-      .attr("y", (d) => radialLabelOffset(d.x, d.y, d.angle, 36).y)
+      .attr("x", (d) => labelsAbovePanel(d).place.x)
+      .attr("y", (d) => labelsAbovePanel(d).place.y)
       .attr("text-anchor", "middle")
-      .attr("dominant-baseline", "middle")
+      .attr("dominant-baseline", "auto")
       .attr("fill", INK)
       .attr("font-size", 11)
       .attr("font-weight", 700)
@@ -448,18 +517,19 @@ export default function LifeTimeline() {
 
     if (nodes.length > 0) {
       const last = nodes[nodes.length - 1];
-      const outer = radialLabelOffset(last.x, last.y, last.angle, 52);
+      const { cx, cy } = panelCenterFrom(last.x, last.y, last.placement);
+      const panelBottom = cy + JOURNEY_PANEL_H / 2;
       g.append("text")
-        .attr("x", outer.x)
-        .attr("y", outer.y)
+        .attr("x", cx)
+        .attr("y", panelBottom + 18)
         .attr("text-anchor", "middle")
-        .attr("dominant-baseline", "middle")
+        .attr("dominant-baseline", "auto")
         .attr("fill", "#8a7f72")
         .attr("font-size", 10)
         .attr("font-weight", 600)
         .text("Vancouver · Now");
     }
-  }, [activeCategory, size]);
+  }, [activeCategory, width]);
 
   return (
     <div className="relative">
@@ -497,8 +567,8 @@ export default function LifeTimeline() {
 
       <div
         ref={containerRef}
-        className="relative mx-auto overflow-hidden rounded-xl border border-border"
-        style={{ background: PAINTERLY_BG, maxWidth: 720 }}
+        className="relative w-full overflow-visible rounded-xl border border-border"
+        style={{ background: PAINTERLY_BG }}
       >
         <svg
           ref={svgRef}

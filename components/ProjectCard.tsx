@@ -5,13 +5,13 @@ import { withBasePath } from "@/lib/paths";
 export default function ProjectCard({ project }: { project: Project }) {
   return (
     <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-surface transition-shadow hover:shadow-md">
-      <div className="relative h-44 overflow-hidden bg-background">
+      <div className="flex h-48 items-center justify-center overflow-hidden bg-background p-3">
         {project.image ? (
           // eslint-disable-next-line @next/next/no-img-element -- plain img so GitHub Pages basePath is always applied
           <img
             src={withBasePath(project.image)}
             alt={project.title}
-            className="h-full w-full object-cover object-top"
+            className="max-h-full max-w-full object-contain"
           />
         ) : (
           <div className="flex h-full items-center justify-center bg-accent-light/30 text-sm text-muted">

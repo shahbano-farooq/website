@@ -67,6 +67,8 @@ export type LifeEvent = {
   highlight?: boolean;
   /** Milestone still unfolding — no fixed panel illustration */
   ongoing?: boolean;
+  /** Extra journey filters this milestone appears under (e.g. B.Sc. on Research path) */
+  journeyGroups?: LifeCategory[];
 };
 
 export const lifeEvents: LifeEvent[] = [
@@ -81,6 +83,7 @@ export const lifeEvents: LifeEvent[] = [
     description:
       "Graduated 1st in class; awarded the K.K. Aziz Gold Medal. Final project: Urdu dictation system using Markov models for speech recognition.",
     highlight: true,
+    journeyGroups: ["research"],
   },
   {
     id: "esp-gits",
@@ -126,6 +129,7 @@ export const lifeEvents: LifeEvent[] = [
     description:
       "Thesis: Design and Discussion of Visualizations in Pairs — co-design tool PairedVis for domain experts and visualization designers.",
     highlight: true,
+    journeyGroups: ["research"],
   },
   {
     id: "ucalgary-ta",
@@ -160,6 +164,7 @@ export const lifeEvents: LifeEvent[] = [
     location: "UAE",
     description:
       "Co-authored systematic reviews on visual programming, immersive learning, chatbot usability, and mental health chatbots.",
+    journeyGroups: ["research"],
   },
   {
     id: "phd",
