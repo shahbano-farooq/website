@@ -5,6 +5,7 @@ import * as d3 from "d3";
 import {
   categoryColors,
   categoryLabels,
+  lifeEvents,
   type LifeCategory,
   type LifeEvent,
 } from "@/lib/data";
@@ -278,17 +279,27 @@ function placeLabel(location: string): string {
   return location.split(",")[0];
 }
 
+function defaultPreviewEvent(category: LifeCategory | null): LifeEvent | null {
+  if (!category) {
+    return lifeEvents.find((e) => e.id === "phd") ?? null;
+  }
+  const sorted = filterJourneyEvents(category)
+    .slice()
+    .sort((a, b) => a.startYear - b.startYear);
+  return sorted[sorted.length - 1] ?? null;
+}
+
 export default function LifeTimeline() {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const [hovered, setHovered] = useState<LifeEvent | null>(null);
+  const [hovered, setHovered] = useState<LifeEvent | null>(() => defaultPreviewEvent(null));
   const [selected, setSelected] = useState<LifeEvent | null>(null);
   const [activeCategory, setActiveCategory] = useState<LifeCategory | null>(null);
   const [width, setWidth] = useState(JOURNEY_MAX_WIDTH_PX);
   const [maxHeight, setMaxHeight] = useState(JOURNEY_MAX_HEIGHT_PX);
 
   useEffect(() => {
-    setHovered(null);
+    setHovered(defaultPreviewEvent(activeCategory));
   }, [activeCategory]);
 
   useEffect(() => {
@@ -501,15 +512,12 @@ export default function LifeTimeline() {
 
     const nodeG = g.append("g").attr("class", "nodes");
 
-    function showHoverPreview(d: LifeEvent) {
-      setHovered(d);
-    }
+    const defaultPreview = defaultPreviewEvent(activeCategory);
+    const defaultNode = defaultPreview
+      ? nodes.find((n) => n.id === defaultPreview.id)
+      : undefined;
 
-    function hideHoverPreview() {
-      setHovered(null);
-    }
-
-    function highlightChapter(d: MilestoneNode) {
+    function applyChapterHighlight(d: MilestoneNode) {
       stripsG
         .selectAll<SVGPathElement, LifeEvent>(".journey-strip")
         .attr("opacity", (n) => (n.id === d.id ? 1 : 0.28));
@@ -519,14 +527,31 @@ export default function LifeTimeline() {
       panelsG
         .selectAll<SVGGElement, LifeEvent>(".journey-panel")
         .attr("opacity", (n) => (n.id === d.id ? 1 : 0.3));
+    }
+
+    function clearChapterHighlight() {
+      stripsG.selectAll(".journey-strip").attr("opacity", 0.95);
+      nodeG.selectAll(".path-marker").attr("opacity", 1);
+      panelsG.selectAll(".journey-panel").attr("opacity", 1);
+    }
+
+    function showHoverPreview(d: LifeEvent) {
+      setHovered(d);
+    }
+
+    function highlightChapter(d: MilestoneNode) {
+      applyChapterHighlight(d);
       showHoverPreview(d);
     }
 
     function resetHighlight() {
-      stripsG.selectAll(".journey-strip").attr("opacity", 0.95);
-      nodeG.selectAll(".path-marker").attr("opacity", 1);
-      panelsG.selectAll(".journey-panel").attr("opacity", 1);
-      hideHoverPreview();
+      clearChapterHighlight();
+      if (defaultNode) {
+        applyChapterHighlight(defaultNode);
+        showHoverPreview(defaultNode);
+      } else {
+        setHovered(null);
+      }
     }
 
     stripsG
@@ -597,6 +622,10 @@ export default function LifeTimeline() {
       .attr("stroke", PAINTERLY_BG)
       .attr("stroke-width", s(3))
       .text((d) => placeLabel(d.location));
+
+    if (defaultNode) {
+      applyChapterHighlight(defaultNode);
+    }
 
     if (!activeCategory && nodes.length > 0 && nodes[nodes.length - 1].id === "phd") {
       const last = nodes[nodes.length - 1];
