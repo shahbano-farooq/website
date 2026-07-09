@@ -111,8 +111,8 @@ export const lifeEvents: LifeEvent[] = [
     id: "etisalat",
     title: "Technical Content Developer",
     subtitle: "Etisalat",
-    startYear: 2005,
-    endYear: 2007,
+    startYear: 2004,
+    endYear: 2006,
     category: "industry",
     location: "UAE",
     description:
@@ -146,7 +146,7 @@ export const lifeEvents: LifeEvent[] = [
     id: "zayed",
     title: "Instructor",
     subtitle: "Zayed University",
-    startYear: 2017,
+    startYear: 2015,
     endYear: 2025,
     category: "teaching",
     location: "UAE",
@@ -177,6 +177,7 @@ export const lifeEvents: LifeEvent[] = [
     description:
       "Research focus on HCI and visualization — generative tools for co-design and community impact.",
     highlight: true,
+    ongoing: true,
   },
   {
     id: "taip",

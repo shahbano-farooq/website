@@ -178,6 +178,6 @@ export function drawJourneyPanel(
     .attr("y", 2)
     .attr("width", innerW)
     .attr("height", innerH)
-    .attr("preserveAspectRatio", "xMidYMid slice")
+    .attr("preserveAspectRatio", "xMidYMid meet")
     .attr("clip-path", `url(#${clipId})`);
 }

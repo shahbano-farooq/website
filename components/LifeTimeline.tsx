@@ -5,7 +5,6 @@ import * as d3 from "d3";
 import {
   categoryColors,
   categoryLabels,
-  lifeEvents,
   type LifeCategory,
   type LifeEvent,
 } from "@/lib/data";
@@ -17,13 +16,23 @@ import {
   panelCenterFrom,
   type PanelPlacement,
 } from "@/lib/drawJourneyPanel";
+import {
+  eventSegment,
+  filterJourneyEvents,
+  journeyGaps,
+  segmentMidpoint,
+  yearRangeLabel,
+  yearToT,
+} from "@/lib/journeyTimeline";
 
 const PAINTERLY_BG = "#f7f4ef";
 const INK = "#2a3344";
 const ROAD_FILL = "#c4b5a0";
 const ROAD_EDGE = "#8a7a66";
+const GAP_ROAD = "#d8cfc0";
 const PREVIEW_IMAGE_WIDTH = 280;
 const PREVIEW_IMAGE_HEIGHT = 380;
+const STRIP_WIDTH = 14;
 
 function JourneyCallout({ event }: { event: LifeEvent }) {
   const accent = categoryColors[event.category];
@@ -41,9 +50,7 @@ function JourneyCallout({ event }: { event: LifeEvent }) {
       <p className="mt-1 text-sm text-muted">
         {event.subtitle} · {event.location}
       </p>
-      <p className="text-xs text-muted">
-        {event.startYear}–{event.endYear}
-      </p>
+      <p className="text-xs text-muted">{yearRangeLabel(event)}</p>
       <p className="mt-2.5 text-sm leading-relaxed text-muted">{event.description}</p>
     </>
   );
@@ -112,64 +119,51 @@ function JourneyHoverPreview({ event }: { event: LifeEvent }) {
   );
 }
 
+type PathPoint = { x: number; y: number; t: number };
+
 type MilestoneNode = LifeEvent & {
   x: number;
   y: number;
   angle: number;
   placement: PanelPlacement;
+  tMid: number;
+  t0: number;
+  t1: number;
 };
-
-/** Cumulative weights — larger gaps when location changes. */
-function milestoneWeights(events: LifeEvent[]): number[] {
-  const weights: number[] = [0];
-  const SAME_PLACE = 1;
-  const NEW_PLACE = 2.6;
-  for (let i = 1; i < events.length; i++) {
-    const moved =
-      locationKey(events[i].location) !== locationKey(events[i - 1].location);
-    weights.push(weights[i - 1] + (moved ? NEW_PLACE : SAME_PLACE));
-  }
-  return weights;
-}
 
 type SpiralLayout = {
   cx: number;
   cy: number;
-  points: { x: number; y: number; angle: number; placement: PanelPlacement }[];
-  pathPoints: { x: number; y: number }[];
+  pathPoints: PathPoint[];
   labelPad: number;
+  pointAt: (t: number) => {
+    x: number;
+    y: number;
+    angle: number;
+    placement: PanelPlacement;
+  };
 };
 
-const NODE_RING_R = 16;
-const PANEL_GAP = 18;
-
-function filterJourneyEvents(category: LifeCategory | null): LifeEvent[] {
-  if (!category) return lifeEvents;
-  return lifeEvents.filter(
-    (e) => e.journeyGroups?.includes(category) ?? e.category === category
-  );
-}
+const NODE_MARKER_R = 5;
+const PANEL_GAP = 5;
+const JOURNEY_MAX_HEIGHT_RATIO = 0.58;
+const JOURNEY_MAX_HEIGHT_PX = 560;
 
 function panelDistance(t: number) {
-  return NODE_RING_R + PANEL_GAP + JOURNEY_PANEL_H / 2 + t * 18;
+  return NODE_MARKER_R + PANEL_GAP + JOURNEY_PANEL_H / 2 + t * 4;
 }
 
-/** Archimedean spiral: oldest at center, latest on the outer ring. */
-function buildSpiralLayout(events: LifeEvent[], layoutWidth: number): SpiralLayout {
-  const count = events.length;
+/** Archimedean spiral mapped to calendar years (1999 → present). */
+function buildSpiralLayout(layoutWidth: number): SpiralLayout {
   const cx = layoutWidth / 2;
   const cy = layoutWidth / 2;
-  const panelPad = JOURNEY_PANEL_W / 2 + 36;
-  const labelPad = 30;
+  const panelPad = JOURNEY_PANEL_W / 2 + 22;
+  const labelPad = 20;
   const maxR = layoutWidth / 2 - panelPad;
-  const minR = Math.max(40, maxR * 0.12);
-  const weights = milestoneWeights(events);
-  const total = weights[count - 1] || 1;
-  const turns = Math.max(1.4, Math.min(2.6, count * 0.28));
+  const minR = Math.max(30, maxR * 0.1);
+  const turns = 2;
   const totalAngle = turns * Math.PI * 2;
   const startAngle = -Math.PI / 2;
-
-  const tAt = (i: number) => (count === 1 ? 0.5 : weights[i] / total);
 
   const pointAt = (t: number) => {
     const angle = startAngle + t * totalAngle;
@@ -186,28 +180,31 @@ function buildSpiralLayout(events: LifeEvent[], layoutWidth: number): SpiralLayo
     };
   };
 
-  const pathSamples = Math.max(120, count * 24);
-  const pathPoints = Array.from({ length: pathSamples + 1 }, (_, i) => {
+  const pathSamples = 220;
+  const pathPoints: PathPoint[] = Array.from({ length: pathSamples + 1 }, (_, i) => {
     const t = i / pathSamples;
     const { x, y } = pointAt(t);
-    return { x, y };
+    return { x, y, t };
   });
 
-  const points = count === 0 ? [] : events.map((_, i) => pointAt(tAt(i)));
+  return { cx, cy, pathPoints, labelPad, pointAt };
+}
 
-  return { cx, cy, points, pathPoints, labelPad };
+function slicePathByT(pathPoints: PathPoint[], t0: number, t1: number): PathPoint[] {
+  return pathPoints.filter((p) => p.t >= t0 - 0.0001 && p.t <= t1 + 0.0001);
 }
 
 function computeJourneyBounds(
   nodes: MilestoneNode[],
   spiral: SpiralLayout,
-  showOrigin: boolean
+  showOrigin: boolean,
+  showGaps: boolean
 ) {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  const pad = 16;
+  const pad = 10;
 
   const include = (x: number, y: number, radius = 0) => {
     minX = Math.min(minX, x - radius);
@@ -216,18 +213,30 @@ function computeJourneyBounds(
     maxY = Math.max(maxY, y + radius);
   };
 
+  for (const p of spiral.pathPoints) {
+    include(p.x, p.y, STRIP_WIDTH);
+  }
+
   if (showOrigin) {
-    include(spiral.cx, spiral.cy, 34);
+    include(spiral.cx, spiral.cy, 28);
   }
 
   for (const node of nodes) {
-    include(node.x, node.y, NODE_RING_R + 4);
+    include(node.x, node.y, NODE_MARKER_R + 6);
     const { cx, cy } = panelCenterFrom(node.x, node.y, node.placement);
     include(cx, cy, JOURNEY_PANEL_W / 2 + 4);
     include(cx, cy, JOURNEY_PANEL_H / 2 + 4);
     const labels = labelsAbovePanel(node);
     include(labels.year.x, labels.year.y, 8);
     include(labels.place.x, labels.place.y, 8);
+  }
+
+  if (showGaps) {
+    for (const gap of journeyGaps) {
+      const tMid = (yearToT(gap.startYear) + yearToT(gap.endYear)) / 2;
+      const pt = spiral.pointAt(tMid);
+      include(pt.x, pt.y, 24);
+    }
   }
 
   if (nodes.length > 0) {
@@ -252,12 +261,11 @@ function labelsAbovePanel(node: MilestoneNode) {
   const { cx, cy } = panelCenterFrom(node.x, node.y, node.placement);
   const panelTop = cy - JOURNEY_PANEL_H / 2;
   return {
-    year: { x: cx, y: panelTop - 22 },
-    place: { x: cx, y: panelTop - 8 },
+    year: { x: cx, y: panelTop - 16 },
+    place: { x: cx, y: panelTop - 5 },
   };
 }
 
-/** Normalize place names so nearby labels (e.g. Lahore / Pakistan) share a region. */
 function locationKey(location: string): string {
   const loc = location.toLowerCase();
   if (loc.includes("lahore") || loc === "pakistan") return "pakistan";
@@ -283,6 +291,7 @@ export default function LifeTimeline() {
   const [selected, setSelected] = useState<LifeEvent | null>(null);
   const [activeCategory, setActiveCategory] = useState<LifeCategory | null>(null);
   const [width, setWidth] = useState(720);
+  const [maxHeight, setMaxHeight] = useState(JOURNEY_MAX_HEIGHT_PX);
 
   useEffect(() => {
     setHovered(null);
@@ -292,34 +301,53 @@ export default function LifeTimeline() {
     if (!containerRef.current) return;
     const update = () => {
       setWidth(containerRef.current!.clientWidth);
+      setMaxHeight(
+        Math.min(
+          JOURNEY_MAX_HEIGHT_PX,
+          Math.round(window.innerHeight * JOURNEY_MAX_HEIGHT_RATIO)
+        )
+      );
     };
     const ro = new ResizeObserver(update);
     ro.observe(containerRef.current);
+    window.addEventListener("resize", update);
     update();
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
   }, [activeCategory]);
 
   useEffect(() => {
     if (!svgRef.current) return;
 
     const filtered = filterJourneyEvents(activeCategory);
-
     const sorted = filtered.slice().sort((a, b) => a.startYear - b.startYear);
-    const spiral = buildSpiralLayout(sorted, width);
+    const spiral = buildSpiralLayout(width);
 
-    const nodes: MilestoneNode[] = sorted.map((event, i) => ({
-      ...event,
-      x: spiral.points[i].x,
-      y: spiral.points[i].y,
-      angle: spiral.points[i].angle,
-      placement: spiral.points[i].placement,
-    }));
+    const nodes: MilestoneNode[] = sorted.map((event) => {
+      const { t0, t1 } = eventSegment(event);
+      const tMid = segmentMidpoint(event);
+      const pt = spiral.pointAt(tMid);
+      return {
+        ...event,
+        x: pt.x,
+        y: pt.y,
+        angle: pt.angle,
+        placement: pt.placement,
+        tMid,
+        t0,
+        t1,
+      };
+    });
 
     const showOrigin = !activeCategory;
-    const bounds = computeJourneyBounds(nodes, spiral, showOrigin);
+    const showGaps = !activeCategory;
+    const bounds = computeJourneyBounds(nodes, spiral, showOrigin, showGaps);
     const vbW = bounds.maxX - bounds.minX;
     const vbH = bounds.maxY - bounds.minY;
-    const svgHeight = Math.max(320, width * (vbH / vbW));
+    const naturalHeight = width * (vbH / vbW);
+    const svgHeight = Math.min(maxHeight, Math.max(280, naturalHeight));
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
@@ -332,7 +360,7 @@ export default function LifeTimeline() {
     const g = svg.append("g");
 
     const spiralLine = d3
-      .line<{ x: number; y: number }>()
+      .line<PathPoint>()
       .curve(d3.curveCatmullRom.alpha(0.5))
       .x((d) => d.x)
       .y((d) => d.y);
@@ -344,7 +372,7 @@ export default function LifeTimeline() {
         .attr("d", spiralLine(pathData))
         .attr("fill", "none")
         .attr("stroke", ROAD_EDGE)
-        .attr("stroke-width", 22)
+        .attr("stroke-width", 16)
         .attr("stroke-linecap", "round")
         .attr("stroke-linejoin", "round")
         .attr("opacity", 0.45);
@@ -353,9 +381,30 @@ export default function LifeTimeline() {
         .attr("d", spiralLine(pathData))
         .attr("fill", "none")
         .attr("stroke", ROAD_FILL)
-        .attr("stroke-width", 16)
+        .attr("stroke-width", 12)
         .attr("stroke-linecap", "round")
         .attr("stroke-linejoin", "round");
+
+      if (showGaps) {
+        for (const gap of journeyGaps) {
+          const gapPoints = slicePathByT(
+            pathData,
+            yearToT(gap.startYear),
+            yearToT(gap.endYear)
+          );
+          if (gapPoints.length > 1) {
+            g.append("path")
+              .attr("d", spiralLine(gapPoints))
+              .attr("fill", "none")
+              .attr("stroke", GAP_ROAD)
+              .attr("stroke-width", 12)
+              .attr("stroke-linecap", "butt")
+              .attr("stroke-linejoin", "round")
+              .attr("stroke-dasharray", "2,6")
+              .attr("opacity", 0.85);
+          }
+        }
+      }
 
       g.append("path")
         .attr("d", spiralLine(pathData))
@@ -367,11 +416,45 @@ export default function LifeTimeline() {
         .attr("opacity", 0.85);
     }
 
+    const stripsG = g.append("g").attr("class", "strips");
+
+    sorted.forEach((event) => {
+      const { t0, t1 } = eventSegment(event);
+      const segmentPoints = slicePathByT(pathData, t0, t1);
+      if (segmentPoints.length < 2) return;
+
+      const color = categoryColors[event.category];
+
+      stripsG
+        .append("path")
+        .datum(event)
+        .attr("class", "journey-strip")
+        .attr("data-event-id", event.id)
+        .attr("d", spiralLine(segmentPoints)!)
+        .attr("fill", "none")
+        .attr("stroke", color)
+        .attr("stroke-width", STRIP_WIDTH)
+        .attr("stroke-linecap", "butt")
+        .attr("stroke-linejoin", "round")
+        .attr("opacity", 0.95);
+
+      stripsG
+        .append("path")
+        .datum(event)
+        .attr("class", "journey-strip-hit")
+        .attr("d", spiralLine(segmentPoints)!)
+        .attr("fill", "none")
+        .attr("stroke", "transparent")
+        .attr("stroke-width", 22)
+        .attr("stroke-linecap", "round")
+        .style("cursor", "pointer");
+    });
+
     if (showOrigin) {
       g.append("circle")
         .attr("cx", spiral.cx)
         .attr("cy", spiral.cy)
-        .attr("r", 28)
+        .attr("r", 22)
         .attr("fill", "#fffef5")
         .attr("stroke", ROAD_EDGE)
         .attr("stroke-width", 1.5)
@@ -395,6 +478,26 @@ export default function LifeTimeline() {
         .text("Lahore");
     }
 
+    if (showGaps) {
+      for (const gap of journeyGaps) {
+        const tMid = (yearToT(gap.startYear) + yearToT(gap.endYear)) / 2;
+        const pt = spiral.pointAt(tMid);
+        g.append("text")
+          .attr("x", pt.x)
+          .attr("y", pt.y)
+          .attr("text-anchor", "middle")
+          .attr("dominant-baseline", "middle")
+          .attr("fill", "#9a8f82")
+          .attr("font-size", 8)
+          .attr("font-weight", 600)
+          .attr("font-style", "italic")
+          .attr("paint-order", "stroke")
+          .attr("stroke", PAINTERLY_BG)
+          .attr("stroke-width", 3)
+          .text(`${gap.startYear}–${gap.endYear}`);
+      }
+    }
+
     const nodeById = new Map(nodes.map((n) => [n.id, n]));
     const defs = svg.append("defs");
     const panelsG = g.append("g").attr("class", "panels");
@@ -404,18 +507,6 @@ export default function LifeTimeline() {
 
     const nodeG = g.append("g").attr("class", "nodes");
 
-    nodeG
-      .selectAll(".milestone-ring")
-      .data(nodes)
-      .join("circle")
-      .attr("class", "milestone-ring")
-      .attr("cx", (d) => d.x)
-      .attr("cy", (d) => d.y)
-      .attr("r", NODE_RING_R)
-      .attr("fill", "#fffef5")
-      .attr("stroke", ROAD_EDGE)
-      .attr("stroke-width", 2);
-
     function showHoverPreview(d: LifeEvent) {
       setHovered(d);
     }
@@ -424,11 +515,11 @@ export default function LifeTimeline() {
       setHovered(null);
     }
 
-    function highlightMilestone(d: MilestoneNode) {
-      nodeG.selectAll(".milestone").attr("opacity", (n) =>
-        (n as MilestoneNode).id === d.id ? 1 : 0.4
-      );
-      nodeG.selectAll(".milestone-ring").attr("opacity", (n) =>
+    function highlightChapter(d: MilestoneNode) {
+      stripsG
+        .selectAll<SVGPathElement, LifeEvent>(".journey-strip")
+        .attr("opacity", (n) => (n.id === d.id ? 1 : 0.28));
+      nodeG.selectAll(".path-marker").attr("opacity", (n) =>
         (n as MilestoneNode).id === d.id ? 1 : 0.35
       );
       panelsG
@@ -438,41 +529,39 @@ export default function LifeTimeline() {
     }
 
     function resetHighlight() {
-      nodeG.selectAll(".milestone").attr("opacity", 1);
-      nodeG.selectAll(".milestone-ring").attr("opacity", 1);
+      stripsG.selectAll(".journey-strip").attr("opacity", 0.95);
+      nodeG.selectAll(".path-marker").attr("opacity", 1);
       panelsG.selectAll(".journey-panel").attr("opacity", 1);
       hideHoverPreview();
     }
 
+    stripsG
+      .selectAll<SVGPathElement, LifeEvent>(".journey-strip-hit")
+      .on("mouseenter", (_, d) => highlightChapter(nodeById.get(d.id)!))
+      .on("mouseleave", resetHighlight)
+      .on("click", (_, d) => setSelected(d));
+
     panelsG
       .selectAll<SVGGElement, LifeEvent>(".journey-panel")
-      .on("mouseenter", (_, d) => {
-        highlightMilestone(nodeById.get(d.id)!);
-      })
+      .on("mouseenter", (_, d) => highlightChapter(nodeById.get(d.id)!))
       .on("mouseleave", resetHighlight)
       .on("click", (_, d) => setSelected(d));
 
     nodeG
-      .selectAll(".milestone")
+      .selectAll(".path-marker")
       .data(nodes)
       .join("circle")
-      .attr("class", "milestone")
+      .attr("class", "path-marker")
       .attr("cx", (d) => d.x)
       .attr("cy", (d) => d.y)
-      .attr("r", (d) => (d.highlight ? 11 : 8))
+      .attr("r", NODE_MARKER_R)
       .attr("fill", (d) => categoryColors[d.category])
       .attr("stroke", "#fff")
-      .attr("stroke-width", 3)
+      .attr("stroke-width", 2)
       .attr("paint-order", "stroke")
       .style("cursor", "pointer")
-      .on("mouseenter", function (_, d) {
-        d3.select(this).attr("r", (d.highlight ? 11 : 8) + 3);
-        highlightMilestone(d);
-      })
-      .on("mouseleave", function (_, d) {
-        d3.select(this).attr("r", d.highlight ? 11 : 8);
-        resetHighlight();
-      })
+      .on("mouseenter", (_, d) => highlightChapter(d))
+      .on("mouseleave", resetHighlight)
       .on("click", (_, d) => setSelected(d));
 
     nodeG
@@ -485,12 +574,12 @@ export default function LifeTimeline() {
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "auto")
       .attr("fill", INK)
-      .attr("font-size", 12)
+      .attr("font-size", 9)
       .attr("font-weight", 800)
       .attr("paint-order", "stroke")
       .attr("stroke", PAINTERLY_BG)
       .attr("stroke-width", 3)
-      .text((d) => d.startYear);
+      .text((d) => yearRangeLabel(d));
 
     const placeNodes = nodes.filter(
       (d, i) =>
@@ -508,7 +597,7 @@ export default function LifeTimeline() {
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "auto")
       .attr("fill", INK)
-      .attr("font-size", 11)
+      .attr("font-size", 9)
       .attr("font-weight", 700)
       .attr("paint-order", "stroke")
       .attr("stroke", PAINTERLY_BG)
@@ -521,7 +610,7 @@ export default function LifeTimeline() {
       const panelBottom = cy + JOURNEY_PANEL_H / 2;
       g.append("text")
         .attr("x", cx)
-        .attr("y", panelBottom + 18)
+        .attr("y", panelBottom + 12)
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "auto")
         .attr("fill", "#8a7f72")
@@ -529,7 +618,7 @@ export default function LifeTimeline() {
         .attr("font-weight", 600)
         .text("Vancouver · Now");
     }
-  }, [activeCategory, width]);
+  }, [activeCategory, width, maxHeight]);
 
   return (
     <div className="relative">
@@ -567,7 +656,7 @@ export default function LifeTimeline() {
 
       <div
         ref={containerRef}
-        className="relative w-full overflow-visible rounded-xl border border-border"
+        className="relative mx-auto w-full max-w-3xl overflow-visible rounded-xl border border-border"
         style={{ background: PAINTERLY_BG }}
       >
         <svg
@@ -577,7 +666,7 @@ export default function LifeTimeline() {
           aria-label="Spiral life journey visualization"
         />
         <p className="border-t border-border/60 px-4 py-3 text-center text-xs text-muted">
-          A spiral from Lahore (1999) at the center outward to Vancouver — each milestone has an illustrated panel from that chapter
+          Colored strips along the spiral mark each chapter — length follows years on the path from Lahore (1999) to Vancouver today
         </p>
       </div>
 
@@ -597,7 +686,7 @@ export default function LifeTimeline() {
                 {selected.title}
               </h3>
               <p className="text-sm text-muted">
-                {selected.subtitle} · {selected.location} · {selected.startYear}–{selected.endYear}
+                {selected.subtitle} · {selected.location} · {yearRangeLabel(selected)}
               </p>
               <p className="mt-3 text-sm leading-relaxed text-muted">{selected.description}</p>
             </div>
