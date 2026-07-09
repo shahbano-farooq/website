@@ -17,7 +17,7 @@ export default function HomePage() {
       <HeroSection />
 
       <section className="border-b border-border bg-background">
-        <div className="mx-auto max-w-5xl px-6 py-16">
+        <div className="mx-auto max-w-6xl px-6 py-16">
           <SectionHeading
             title="My Journey"
             subtitle="A spiral outward through education, industry, teaching, and research — from Lahore at the center to Vancouver today."

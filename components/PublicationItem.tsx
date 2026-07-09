@@ -4,7 +4,7 @@ const typeLabels: Record<Publication["type"], string> = {
   journal: "Journal",
   conference: "Conference",
   workshop: "Workshop",
-  thesis: "Theses",
+  thesis: "Thesis",
   book: "Book",
   chapter: "Book Chapter",
 };

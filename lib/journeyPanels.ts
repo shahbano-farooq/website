@@ -1,6 +1,6 @@
 import { withBasePath } from "./paths";
 
-const JOURNEY_SCALE = 1.2;
+export const JOURNEY_SCALE = 1.5;
 
 export const JOURNEY_PANEL_W = Math.round(76 * JOURNEY_SCALE);
 export const JOURNEY_PANEL_H = Math.round(100 * JOURNEY_SCALE);

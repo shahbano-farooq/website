@@ -18,6 +18,9 @@ const MAIN_JOURNEY_IDS = new Set([
   "phd",
 ]);
 
+/** Shown in news/data but not as a separate journey chapter. */
+const JOURNEY_HIDDEN_IDS = new Set(["taip"]);
+
 export function eventEndYear(event: LifeEvent): number {
   if (event.ongoing) return JOURNEY_TIMELINE_END;
   return event.endYear;
@@ -41,13 +44,18 @@ export function segmentMidpoint(event: LifeEvent): number {
 }
 
 export function filterJourneyEvents(category: LifeCategory | null): LifeEvent[] {
+  const visible = (events: LifeEvent[]) =>
+    events.filter((e) => !JOURNEY_HIDDEN_IDS.has(e.id));
+
   if (!category) {
-    return lifeEvents.filter((e) => MAIN_JOURNEY_IDS.has(e.id));
+    return visible(lifeEvents.filter((e) => MAIN_JOURNEY_IDS.has(e.id)));
   }
-  return lifeEvents.filter(
-    (e) =>
-      e.category === category ||
-      (e.journeyGroups?.includes(category) ?? false)
+  return visible(
+    lifeEvents.filter(
+      (e) =>
+        e.category === category ||
+        (e.journeyGroups?.includes(category) ?? false)
+    )
   );
 }
 

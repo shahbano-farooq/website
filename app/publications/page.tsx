@@ -15,7 +15,7 @@ const typeLabels: Record<(typeof typeOrder)[number], string> = {
   chapter: "Book Chapters",
   conference: "Conference Papers",
   workshop: "Workshop Papers",
-  thesis: "Theses",
+  thesis: "Thesis",
 };
 
 export default function PublicationsPage() {

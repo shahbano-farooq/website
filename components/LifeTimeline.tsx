@@ -11,6 +11,7 @@ import {
 import {
   JOURNEY_PANEL_H,
   JOURNEY_PANEL_W,
+  JOURNEY_SCALE,
   drawJourneyPanel,
   journeyPanelImages,
   panelCenterFrom,
@@ -30,10 +31,9 @@ const INK = "#2a3344";
 const ROAD_FILL = "#c4b5a0";
 const ROAD_EDGE = "#8a7a66";
 const GAP_ROAD = "#d8cfc0";
-const PREVIEW_IMAGE_WIDTH = 336;
-const PREVIEW_IMAGE_HEIGHT = 456;
+const PREVIEW_IMAGE_WIDTH = 220;
+const PREVIEW_IMAGE_HEIGHT = 300;
 
-const JOURNEY_SCALE = 1.2;
 const s = (value: number) => Math.round(value * JOURNEY_SCALE);
 const STRIP_WIDTH = s(14);
 
@@ -68,11 +68,9 @@ function JourneyHoverPreview({ event }: { event: LifeEvent }) {
       style={{
         width: PREVIEW_IMAGE_WIDTH,
         height: PREVIEW_IMAGE_HEIGHT,
-        maxWidth: "72vw",
-        maxHeight: "52vh",
       }}
     >
-      <svg width="56" height="56" viewBox="0 0 64 64" aria-hidden className="mb-3 opacity-90">
+      <svg width="48" height="48" viewBox="0 0 64 64" aria-hidden className="mb-2 opacity-90">
         <path
           d="M32 6 C18 16, 8 30, 12 46 C16 58, 28 60, 40 52 C50 46, 54 34, 48 22"
           fill="none"
@@ -82,8 +80,8 @@ function JourneyHoverPreview({ event }: { event: LifeEvent }) {
         />
         <circle cx="48" cy="22" r="4" fill="#c47d3a" />
       </svg>
-      <span className="font-serif text-base font-semibold">Ongoing exploration</span>
-      <span className="mt-2 px-6 text-sm italic text-[#5c7a8e]">
+      <span className="font-serif text-sm font-semibold">Ongoing exploration</span>
+      <span className="mt-1.5 px-4 text-xs italic text-[#5c7a8e]">
         The path ahead is still unfolding
       </span>
     </div>
@@ -91,32 +89,24 @@ function JourneyHoverPreview({ event }: { event: LifeEvent }) {
     <img
       src={src}
       alt={event.title}
-      className="block object-cover"
+      className="block w-full object-contain"
       style={{
         width: PREVIEW_IMAGE_WIDTH,
         height: PREVIEW_IMAGE_HEIGHT,
-        maxWidth: "38vw",
-        maxHeight: "52vh",
       }}
     />
   ) : null;
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="rounded-xl border border-border bg-surface/95 p-3 shadow-lg backdrop-blur-sm"
       aria-live="polite"
-      role="presentation"
     >
-      <div className="absolute inset-0 bg-[#1a2332]/25 backdrop-blur-[2px]" />
-
-      <div className="relative flex flex-col items-center sm:block">
-        <div className="shrink-0 overflow-hidden rounded-xl border-2 border-border bg-surface shadow-2xl">
-          {panel}
-        </div>
-
-        <div className="journey-callout journey-callout--right mt-4 w-full max-w-sm rounded-xl border border-border bg-surface px-4 py-3.5 shadow-xl sm:absolute sm:left-full sm:top-1/2 sm:mt-0 sm:ml-4 sm:w-[260px] sm:-translate-y-1/2">
-          <JourneyCallout event={event} />
-        </div>
+      <div className="overflow-hidden rounded-lg border border-border bg-[#fffef5]">
+        {panel}
+      </div>
+      <div className="mt-3">
+        <JourneyCallout event={event} />
       </div>
     </div>
   );
@@ -608,7 +598,7 @@ export default function LifeTimeline() {
       .attr("stroke-width", s(3))
       .text((d) => placeLabel(d.location));
 
-    if (nodes.length > 0) {
+    if (!activeCategory && nodes.length > 0 && nodes[nodes.length - 1].id === "phd") {
       const last = nodes[nodes.length - 1];
       const { cx, cy } = panelCenterFrom(last.x, last.y, last.placement);
       const panelBottom = cy + JOURNEY_PANEL_H / 2;
@@ -658,23 +648,29 @@ export default function LifeTimeline() {
         )}
       </div>
 
-      <div
-        ref={containerRef}
-        className="relative mx-auto w-full overflow-visible rounded-xl border border-border"
-        style={{ background: PAINTERLY_BG, maxWidth: JOURNEY_MAX_WIDTH_PX }}
-      >
-        <svg
-          ref={svgRef}
-          className="mx-auto block"
-          role="img"
-          aria-label="Spiral life journey visualization"
-        />
-        <p className="border-t border-border/60 px-4 py-3 text-center text-xs text-muted">
-          Colored strips along the spiral mark each chapter — length follows years on the path from Lahore (1999) to Vancouver today
-        </p>
-      </div>
+      <div className="flex flex-col items-stretch gap-4 xl:flex-row xl:items-start xl:gap-6">
+        <div
+          ref={containerRef}
+          className="relative mx-auto w-full min-w-0 flex-1 overflow-visible rounded-xl border border-border"
+          style={{ background: PAINTERLY_BG, maxWidth: JOURNEY_MAX_WIDTH_PX }}
+        >
+          <svg
+            ref={svgRef}
+            className="mx-auto block"
+            role="img"
+            aria-label="Spiral life journey visualization"
+          />
+          <p className="border-t border-border/60 px-4 py-3 text-center text-xs text-muted">
+            Colored strips along the spiral mark each chapter — length follows years on the path from Lahore (1999) to Vancouver today
+          </p>
+        </div>
 
-      {hovered && <JourneyHoverPreview event={hovered} />}
+        {hovered && (
+          <aside className="w-full shrink-0 xl:sticky xl:top-24 xl:w-72">
+            <JourneyHoverPreview event={hovered} />
+          </aside>
+        )}
+      </div>
 
       {selected && (
         <div className="mt-6 rounded-lg border border-border bg-accent-light/30 p-5">
