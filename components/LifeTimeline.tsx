@@ -30,9 +30,12 @@ const INK = "#2a3344";
 const ROAD_FILL = "#c4b5a0";
 const ROAD_EDGE = "#8a7a66";
 const GAP_ROAD = "#d8cfc0";
-const PREVIEW_IMAGE_WIDTH = 280;
-const PREVIEW_IMAGE_HEIGHT = 380;
-const STRIP_WIDTH = 14;
+const PREVIEW_IMAGE_WIDTH = 336;
+const PREVIEW_IMAGE_HEIGHT = 456;
+
+const JOURNEY_SCALE = 1.2;
+const s = (value: number) => Math.round(value * JOURNEY_SCALE);
+const STRIP_WIDTH = s(14);
 
 function JourneyCallout({ event }: { event: LifeEvent }) {
   const accent = categoryColors[event.category];
@@ -144,23 +147,24 @@ type SpiralLayout = {
   };
 };
 
-const NODE_MARKER_R = 5;
-const PANEL_GAP = 5;
-const JOURNEY_MAX_HEIGHT_RATIO = 0.58;
-const JOURNEY_MAX_HEIGHT_PX = 560;
+const NODE_MARKER_R = s(5);
+const PANEL_GAP = s(5);
+const JOURNEY_MAX_HEIGHT_RATIO = 0.58 * JOURNEY_SCALE;
+const JOURNEY_MAX_WIDTH_PX = s(768);
+const JOURNEY_MAX_HEIGHT_PX = s(560);
 
 function panelDistance(t: number) {
-  return NODE_MARKER_R + PANEL_GAP + JOURNEY_PANEL_H / 2 + t * 4;
+  return NODE_MARKER_R + PANEL_GAP + JOURNEY_PANEL_H / 2 + t * s(4);
 }
 
 /** Archimedean spiral mapped to calendar years (1999 → present). */
 function buildSpiralLayout(layoutWidth: number): SpiralLayout {
   const cx = layoutWidth / 2;
   const cy = layoutWidth / 2;
-  const panelPad = JOURNEY_PANEL_W / 2 + 22;
-  const labelPad = 20;
+  const panelPad = JOURNEY_PANEL_W / 2 + s(22);
+  const labelPad = s(20);
   const maxR = layoutWidth / 2 - panelPad;
-  const minR = Math.max(30, maxR * 0.1);
+  const minR = Math.max(s(30), maxR * 0.1);
   const turns = 2;
   const totalAngle = turns * Math.PI * 2;
   const startAngle = -Math.PI / 2;
@@ -204,7 +208,7 @@ function computeJourneyBounds(
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  const pad = 10;
+  const pad = s(10);
 
   const include = (x: number, y: number, radius = 0) => {
     minX = Math.min(minX, x - radius);
@@ -218,11 +222,11 @@ function computeJourneyBounds(
   }
 
   if (showOrigin) {
-    include(spiral.cx, spiral.cy, 28);
+    include(spiral.cx, spiral.cy, s(28));
   }
 
   for (const node of nodes) {
-    include(node.x, node.y, NODE_MARKER_R + 6);
+    include(node.x, node.y, NODE_MARKER_R + s(6));
     const { cx, cy } = panelCenterFrom(node.x, node.y, node.placement);
     include(cx, cy, JOURNEY_PANEL_W / 2 + 4);
     include(cx, cy, JOURNEY_PANEL_H / 2 + 4);
@@ -235,14 +239,14 @@ function computeJourneyBounds(
     for (const gap of journeyGaps) {
       const tMid = (yearToT(gap.startYear) + yearToT(gap.endYear)) / 2;
       const pt = spiral.pointAt(tMid);
-      include(pt.x, pt.y, 24);
+      include(pt.x, pt.y, s(24));
     }
   }
 
   if (nodes.length > 0) {
     const last = nodes[nodes.length - 1];
     const { cx, cy } = panelCenterFrom(last.x, last.y, last.placement);
-    include(cx, cy + JOURNEY_PANEL_H / 2 + 20, 12);
+    include(cx, cy + JOURNEY_PANEL_H / 2 + s(20), s(12));
   }
 
   if (!Number.isFinite(minX)) {
@@ -261,8 +265,8 @@ function labelsAbovePanel(node: MilestoneNode) {
   const { cx, cy } = panelCenterFrom(node.x, node.y, node.placement);
   const panelTop = cy - JOURNEY_PANEL_H / 2;
   return {
-    year: { x: cx, y: panelTop - 16 },
-    place: { x: cx, y: panelTop - 5 },
+    year: { x: cx, y: panelTop - s(16) },
+    place: { x: cx, y: panelTop - s(5) },
   };
 }
 
@@ -290,7 +294,7 @@ export default function LifeTimeline() {
   const [hovered, setHovered] = useState<LifeEvent | null>(null);
   const [selected, setSelected] = useState<LifeEvent | null>(null);
   const [activeCategory, setActiveCategory] = useState<LifeCategory | null>(null);
-  const [width, setWidth] = useState(720);
+  const [width, setWidth] = useState(JOURNEY_MAX_WIDTH_PX);
   const [maxHeight, setMaxHeight] = useState(JOURNEY_MAX_HEIGHT_PX);
 
   useEffect(() => {
@@ -347,7 +351,7 @@ export default function LifeTimeline() {
     const vbW = bounds.maxX - bounds.minX;
     const vbH = bounds.maxY - bounds.minY;
     const naturalHeight = width * (vbH / vbW);
-    const svgHeight = Math.min(maxHeight, Math.max(280, naturalHeight));
+    const svgHeight = Math.min(maxHeight, Math.max(s(280), naturalHeight));
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
@@ -372,7 +376,7 @@ export default function LifeTimeline() {
         .attr("d", spiralLine(pathData))
         .attr("fill", "none")
         .attr("stroke", ROAD_EDGE)
-        .attr("stroke-width", 16)
+        .attr("stroke-width", s(16))
         .attr("stroke-linecap", "round")
         .attr("stroke-linejoin", "round")
         .attr("opacity", 0.45);
@@ -381,7 +385,7 @@ export default function LifeTimeline() {
         .attr("d", spiralLine(pathData))
         .attr("fill", "none")
         .attr("stroke", ROAD_FILL)
-        .attr("stroke-width", 12)
+        .attr("stroke-width", s(12))
         .attr("stroke-linecap", "round")
         .attr("stroke-linejoin", "round");
 
@@ -397,7 +401,7 @@ export default function LifeTimeline() {
               .attr("d", spiralLine(gapPoints))
               .attr("fill", "none")
               .attr("stroke", GAP_ROAD)
-              .attr("stroke-width", 12)
+              .attr("stroke-width", s(12))
               .attr("stroke-linecap", "butt")
               .attr("stroke-linejoin", "round")
               .attr("stroke-dasharray", "2,6")
@@ -410,7 +414,7 @@ export default function LifeTimeline() {
         .attr("d", spiralLine(pathData))
         .attr("fill", "none")
         .attr("stroke", "#e8d48a")
-        .attr("stroke-width", 2)
+        .attr("stroke-width", s(2))
         .attr("stroke-linecap", "round")
         .attr("stroke-dasharray", "6,10")
         .attr("opacity", 0.85);
@@ -445,7 +449,7 @@ export default function LifeTimeline() {
         .attr("d", spiralLine(segmentPoints)!)
         .attr("fill", "none")
         .attr("stroke", "transparent")
-        .attr("stroke-width", 22)
+        .attr("stroke-width", s(22))
         .attr("stroke-linecap", "round")
         .style("cursor", "pointer");
     });
@@ -454,27 +458,27 @@ export default function LifeTimeline() {
       g.append("circle")
         .attr("cx", spiral.cx)
         .attr("cy", spiral.cy)
-        .attr("r", 22)
+        .attr("r", s(22))
         .attr("fill", "#fffef5")
         .attr("stroke", ROAD_EDGE)
-        .attr("stroke-width", 1.5)
+        .attr("stroke-width", s(1.5))
         .attr("opacity", 0.9);
 
       g.append("text")
         .attr("x", spiral.cx)
-        .attr("y", spiral.cy - 4)
+        .attr("y", spiral.cy - s(4))
         .attr("text-anchor", "middle")
         .attr("fill", "#8a7f72")
-        .attr("font-size", 9)
+        .attr("font-size", s(9))
         .attr("font-weight", 600)
         .text("1999");
 
       g.append("text")
         .attr("x", spiral.cx)
-        .attr("y", spiral.cy + 10)
+        .attr("y", spiral.cy + s(10))
         .attr("text-anchor", "middle")
         .attr("fill", "#8a7f72")
-        .attr("font-size", 8)
+        .attr("font-size", s(8))
         .text("Lahore");
     }
 
@@ -488,12 +492,12 @@ export default function LifeTimeline() {
           .attr("text-anchor", "middle")
           .attr("dominant-baseline", "middle")
           .attr("fill", "#9a8f82")
-          .attr("font-size", 8)
+          .attr("font-size", s(8))
           .attr("font-weight", 600)
           .attr("font-style", "italic")
           .attr("paint-order", "stroke")
           .attr("stroke", PAINTERLY_BG)
-          .attr("stroke-width", 3)
+          .attr("stroke-width", s(3))
           .text(`${gap.startYear}–${gap.endYear}`);
       }
     }
@@ -557,7 +561,7 @@ export default function LifeTimeline() {
       .attr("r", NODE_MARKER_R)
       .attr("fill", (d) => categoryColors[d.category])
       .attr("stroke", "#fff")
-      .attr("stroke-width", 2)
+      .attr("stroke-width", s(2))
       .attr("paint-order", "stroke")
       .style("cursor", "pointer")
       .on("mouseenter", (_, d) => highlightChapter(d))
@@ -574,11 +578,11 @@ export default function LifeTimeline() {
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "auto")
       .attr("fill", INK)
-      .attr("font-size", 9)
+      .attr("font-size", s(9))
       .attr("font-weight", 800)
       .attr("paint-order", "stroke")
       .attr("stroke", PAINTERLY_BG)
-      .attr("stroke-width", 3)
+      .attr("stroke-width", s(3))
       .text((d) => yearRangeLabel(d));
 
     const placeNodes = nodes.filter(
@@ -597,11 +601,11 @@ export default function LifeTimeline() {
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "auto")
       .attr("fill", INK)
-      .attr("font-size", 9)
+      .attr("font-size", s(9))
       .attr("font-weight", 700)
       .attr("paint-order", "stroke")
       .attr("stroke", PAINTERLY_BG)
-      .attr("stroke-width", 3)
+      .attr("stroke-width", s(3))
       .text((d) => placeLabel(d.location));
 
     if (nodes.length > 0) {
@@ -610,11 +614,11 @@ export default function LifeTimeline() {
       const panelBottom = cy + JOURNEY_PANEL_H / 2;
       g.append("text")
         .attr("x", cx)
-        .attr("y", panelBottom + 12)
+        .attr("y", panelBottom + s(12))
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "auto")
         .attr("fill", "#8a7f72")
-        .attr("font-size", 10)
+        .attr("font-size", s(10))
         .attr("font-weight", 600)
         .text("Vancouver · Now");
     }
@@ -656,8 +660,8 @@ export default function LifeTimeline() {
 
       <div
         ref={containerRef}
-        className="relative mx-auto w-full max-w-3xl overflow-visible rounded-xl border border-border"
-        style={{ background: PAINTERLY_BG }}
+        className="relative mx-auto w-full overflow-visible rounded-xl border border-border"
+        style={{ background: PAINTERLY_BG, maxWidth: JOURNEY_MAX_WIDTH_PX }}
       >
         <svg
           ref={svgRef}

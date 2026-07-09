@@ -1,7 +1,9 @@
 import { withBasePath } from "./paths";
 
-export const JOURNEY_PANEL_W = 76;
-export const JOURNEY_PANEL_H = 100;
+const JOURNEY_SCALE = 1.2;
+
+export const JOURNEY_PANEL_W = Math.round(76 * JOURNEY_SCALE);
+export const JOURNEY_PANEL_H = Math.round(100 * JOURNEY_SCALE);
 
 export const journeyPanelImages: Record<string, string> = {
   bsc: withBasePath("/journey/bsc.png"),
