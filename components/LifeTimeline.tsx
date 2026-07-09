@@ -147,14 +147,14 @@ type SpiralLayout = {
   };
 };
 
-const NODE_MARKER_R = s(5);
-const PANEL_GAP = s(5);
+const NODE_MARKER_R = s(4);
+const PANEL_GAP = s(2);
 const JOURNEY_MAX_HEIGHT_RATIO = 0.58 * JOURNEY_SCALE;
 const JOURNEY_MAX_WIDTH_PX = s(768);
 const JOURNEY_MAX_HEIGHT_PX = s(560);
 
 function panelDistance(t: number) {
-  return NODE_MARKER_R + PANEL_GAP + JOURNEY_PANEL_H / 2 + t * s(4);
+  return NODE_MARKER_R + PANEL_GAP + JOURNEY_PANEL_H / 2 + t * s(1.5);
 }
 
 function drawOriginFlowerBud(
@@ -167,81 +167,86 @@ function drawOriginFlowerBud(
     .attr("class", "journey-origin-bud")
     .attr("transform", `translate(${cx},${cy})`);
 
-  const petalCount = 6;
-  for (let i = 0; i < petalCount; i++) {
-    const angle = (i / petalCount) * Math.PI * 2 - Math.PI / 2;
+  const ink = INK;
+  const sketch = (path: string, width = 1.1, opacity = 0.9) => {
     bud
-      .append("ellipse")
-      .attr("cx", 0)
-      .attr("cy", s(-10))
-      .attr("rx", s(7))
-      .attr("ry", s(15))
-      .attr("fill", "#8fb67a")
-      .attr("stroke", "#5f7f52")
-      .attr("stroke-width", s(0.8))
-      .attr("opacity", 0.95)
-      .attr("transform", `rotate(${(angle * 180) / Math.PI})`);
-  }
+      .append("path")
+      .attr("d", path)
+      .attr("fill", "none")
+      .attr("stroke", ink)
+      .attr("stroke-width", s(width))
+      .attr("stroke-linecap", "round")
+      .attr("stroke-linejoin", "round")
+      .attr("opacity", opacity);
+  };
+
+  const petalOutline =
+    `M 0 ${s(-3)} Q ${s(-7)} ${s(-12)} ${s(-4)} ${s(-21)} Q ${s(1)} ${s(-24)} ${s(5)} ${s(-19)} Q ${s(6)} ${s(-10)} 0 ${s(-3)}`;
 
   for (let i = 0; i < 5; i++) {
-    const angle = (i / 5) * Math.PI * 2 - Math.PI / 2 + 18;
+    const angle = (i / 5) * 360 - 90;
     bud
-      .append("ellipse")
-      .attr("cx", 0)
-      .attr("cy", s(-8))
-      .attr("rx", s(5.5))
-      .attr("ry", s(12))
-      .attr("fill", "#f0b8c8")
-      .attr("stroke", "#c97892")
-      .attr("stroke-width", s(0.7))
-      .attr("transform", `rotate(${(angle * 180) / Math.PI})`);
+      .append("path")
+      .attr("d", petalOutline)
+      .attr("fill", "none")
+      .attr("stroke", ink)
+      .attr("stroke-width", s(1.15))
+      .attr("stroke-linecap", "round")
+      .attr("stroke-linejoin", "round")
+      .attr("opacity", 0.88)
+      .attr("transform", `rotate(${angle})`);
   }
 
-  bud
-    .append("ellipse")
-    .attr("cx", 0)
-    .attr("cy", s(-4))
-    .attr("rx", s(4))
-    .attr("ry", s(7))
-    .attr("fill", "#f8d4de")
-    .attr("stroke", "#d490a6")
-    .attr("stroke-width", s(0.6));
+  const innerPetal =
+    `M 0 ${s(-2)} Q ${s(-4)} ${s(-9)} ${s(-2)} ${s(-15)} Q ${s(2)} ${s(-14)} ${s(3)} ${s(-8)} Q ${s(2)} ${s(-4)} 0 ${s(-2)}`;
+  for (let i = 0; i < 4; i++) {
+    const angle = (i / 4) * 360 - 70;
+    bud
+      .append("path")
+      .attr("d", innerPetal)
+      .attr("fill", "none")
+      .attr("stroke", "#6a4f5a")
+      .attr("stroke-width", s(0.95))
+      .attr("stroke-linecap", "round")
+      .attr("stroke-linejoin", "round")
+      .attr("opacity", 0.75)
+      .attr("transform", `rotate(${angle})`);
+  }
 
-  bud
-    .append("path")
-    .attr(
-      "d",
-      `M 0 ${s(10)} C ${s(-3)} ${s(16)}, ${s(3)} ${s(18)}, 0 ${s(22)}`
-    )
-    .attr("fill", "none")
-    .attr("stroke", "#6f8f5e")
-    .attr("stroke-width", s(1.6))
-    .attr("stroke-linecap", "round");
+  sketch(
+    `M ${s(-2)} ${s(-5)} Q ${s(1)} ${s(-11)} ${s(3)} ${s(-7)} Q ${s(1)} ${s(-3)} ${s(-2)} ${s(-5)}`,
+    0.8,
+    0.6
+  );
+
+  sketch(
+    `M 0 ${s(5)} Q ${s(-3)} ${s(11)} ${s(-1)} ${s(17)} Q ${s(2)} ${s(21)} 0 ${s(24)}`,
+    1.2,
+    0.85
+  );
+  sketch(`M ${s(-1)} ${s(14)} Q ${s(3)} ${s(16)} ${s(2)} ${s(19)}`, 0.7, 0.5);
 
   bud
     .append("text")
     .attr("x", 0)
-    .attr("y", s(34))
+    .attr("y", s(32))
     .attr("text-anchor", "middle")
-    .attr("fill", INK)
-    .attr("font-size", s(7.5))
-    .attr("font-weight", 700)
-    .attr("paint-order", "stroke")
-    .attr("stroke", PAINTERLY_BG)
-    .attr("stroke-width", s(2.5))
+    .attr("fill", ink)
+    .attr("font-family", "Georgia, 'Times New Roman', serif")
+    .attr("font-size", s(7))
+    .attr("font-style", "italic")
+    .attr("font-weight", 600)
     .text("Murree Convent");
 
   bud
     .append("text")
     .attr("x", 0)
-    .attr("y", s(44))
+    .attr("y", s(41))
     .attr("text-anchor", "middle")
-    .attr("fill", "#6a5f54")
-    .attr("font-size", s(7))
-    .attr("font-weight", 600)
-    .attr("paint-order", "stroke")
-    .attr("stroke", PAINTERLY_BG)
-    .attr("stroke-width", s(2.5))
+    .attr("fill", "#5c5348")
+    .attr("font-family", "Georgia, 'Times New Roman', serif")
+    .attr("font-size", s(6.5))
+    .attr("font-style", "italic")
     .text("Pakistan");
 }
 
@@ -249,20 +254,20 @@ function drawOriginFlowerBud(
 function buildSpiralLayout(layoutWidth: number): SpiralLayout {
   const cx = layoutWidth / 2;
   const cy = layoutWidth / 2;
-  const panelPad = JOURNEY_PANEL_W / 2 + s(22);
+  const panelPad = JOURNEY_PANEL_W / 2 + s(14);
   const labelPad = s(20);
   const maxR = layoutWidth / 2 - panelPad;
-  const minR = Math.max(s(42), maxR * 0.22);
-  const turns = 2.1;
+  const minR = Math.max(s(48), maxR * 0.3);
+  const turns = 1.95;
   const totalAngle = turns * Math.PI * 2;
   const startAngle = -Math.PI;
-  const shellGrowth = 1.22;
+  const shellGrowth = 1.1;
 
   const pointAt = (t: number) => {
     const angle = startAngle + t * totalAngle;
     const exponential =
       (Math.pow(shellGrowth, t) - 1) / (shellGrowth - 1);
-    const shellT = 0.4 * t + 0.6 * exponential;
+    const shellT = 0.55 * t + 0.45 * exponential;
     const r = minR + shellT * (maxR - minR);
     return {
       x: cx + r * Math.cos(angle),
