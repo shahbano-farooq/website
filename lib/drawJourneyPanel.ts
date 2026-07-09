@@ -7,15 +7,28 @@ export { JOURNEY_PANEL_H, JOURNEY_PANEL_W, journeyPanelImages };
 type PanelParent = Selection<SVGGElement, unknown, null, undefined>;
 type DefsSelection = Selection<SVGDefsElement, unknown, null, undefined>;
 
+export type PanelPlacement =
+  | { type: "side"; side: "left" | "right" }
+  | { type: "radial"; angle: number; distance?: number };
+
+function panelPosition(x: number, y: number, placement: PanelPlacement) {
+  if (placement.type === "side") {
+    const offsetX = placement.side === "left" ? -JOURNEY_PANEL_W - 22 : 22;
+    return { px: x + offsetX, py: y - JOURNEY_PANEL_H / 2 };
+  }
+  const dist = placement.distance ?? 68;
+  const pcx = x + Math.cos(placement.angle) * dist;
+  const pcy = y + Math.sin(placement.angle) * dist;
+  return { px: pcx - JOURNEY_PANEL_W / 2, py: pcy - JOURNEY_PANEL_H / 2 };
+}
+
 export function panelTransformFor(
   x: number,
   y: number,
   side: "left" | "right",
   scale = 1
 ) {
-  const offsetX = side === "left" ? -JOURNEY_PANEL_W - 22 : 22;
-  const px = x + offsetX;
-  const py = y - JOURNEY_PANEL_H / 2;
+  const { px, py } = panelPosition(x, y, { type: "side", side });
   if (scale === 1) return `translate(${px}, ${py})`;
   const cx = px + JOURNEY_PANEL_W / 2;
   const cy = py + JOURNEY_PANEL_H / 2;
@@ -27,11 +40,9 @@ export function drawOngoingExplorationPanel(
   event: LifeEvent,
   x: number,
   y: number,
-  side: "left" | "right"
+  placement: PanelPlacement
 ) {
-  const offsetX = side === "left" ? -JOURNEY_PANEL_W - 22 : 22;
-  const px = x + offsetX;
-  const py = y - JOURNEY_PANEL_H / 2;
+  const { px, py } = panelPosition(x, y, placement);
 
   const panelG = parent
     .append("g")
@@ -109,19 +120,17 @@ export function drawJourneyPanel(
   event: LifeEvent,
   x: number,
   y: number,
-  side: "left" | "right"
+  placement: PanelPlacement
 ) {
   if (event.ongoing) {
-    drawOngoingExplorationPanel(parent, event, x, y, side);
+    drawOngoingExplorationPanel(parent, event, x, y, placement);
     return;
   }
 
   const imageSrc = journeyPanelImages[event.id];
   if (!imageSrc) return;
 
-  const offsetX = side === "left" ? -JOURNEY_PANEL_W - 22 : 22;
-  const px = x + offsetX;
-  const py = y - JOURNEY_PANEL_H / 2;
+  const { px, py } = panelPosition(x, y, placement);
   const clipId = `journey-clip-${event.id}`;
   const innerW = JOURNEY_PANEL_W - 4;
   const innerH = JOURNEY_PANEL_H - 4;

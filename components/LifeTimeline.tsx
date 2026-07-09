@@ -13,6 +13,7 @@ import {
   JOURNEY_PANEL_W,
   drawJourneyPanel,
   journeyPanelImages,
+  type PanelPlacement,
 } from "@/lib/drawJourneyPanel";
 
 const PAINTERLY_BG = "#f7f4ef";
@@ -112,8 +113,87 @@ function JourneyHoverPreview({ event }: { event: LifeEvent }) {
 type MilestoneNode = LifeEvent & {
   x: number;
   y: number;
-  side: "left" | "right";
+  angle: number;
+  placement: PanelPlacement;
 };
+
+/** Cumulative weights — larger gaps when location changes. */
+function milestoneWeights(events: LifeEvent[]): number[] {
+  const weights: number[] = [0];
+  const SAME_PLACE = 1;
+  const NEW_PLACE = 2.6;
+  for (let i = 1; i < events.length; i++) {
+    const moved =
+      locationKey(events[i].location) !== locationKey(events[i - 1].location);
+    weights.push(weights[i - 1] + (moved ? NEW_PLACE : SAME_PLACE));
+  }
+  return weights;
+}
+
+type SpiralLayout = {
+  cx: number;
+  cy: number;
+  points: { x: number; y: number; angle: number; placement: PanelPlacement }[];
+  pathPoints: { x: number; y: number }[];
+};
+
+/** Archimedean spiral: oldest at center, latest on the outer ring. */
+function buildSpiralLayout(events: LifeEvent[], size: number): SpiralLayout {
+  const count = events.length;
+  const cx = size / 2;
+  const cy = size / 2;
+  const panelPad = JOURNEY_PANEL_W + 40;
+  const maxR = size / 2 - panelPad;
+  const minR = Math.max(36, maxR * 0.1);
+  const weights = milestoneWeights(events);
+  const total = weights[count - 1] || 1;
+  const turns = Math.max(1.4, Math.min(2.6, count * 0.24));
+  const totalAngle = turns * Math.PI * 2;
+  const startAngle = -Math.PI / 2;
+
+  const tAt = (i: number) => (count === 1 ? 0.5 : weights[i] / total);
+
+  const pointAt = (t: number) => {
+    const angle = startAngle + t * totalAngle;
+    const r = minR + t * (maxR - minR);
+    return {
+      x: cx + r * Math.cos(angle),
+      y: cy + r * Math.sin(angle),
+      angle,
+      placement: {
+        type: "radial" as const,
+        angle,
+        distance: 58 + t * 28,
+      },
+    };
+  };
+
+  const pathSamples = Math.max(120, count * 24);
+  const pathPoints = Array.from({ length: pathSamples + 1 }, (_, i) => {
+    const t = i / pathSamples;
+    const { x, y } = pointAt(t);
+    return { x, y };
+  });
+
+  const points =
+    count === 0
+      ? []
+      : events.map((_, i) => pointAt(tAt(i)));
+
+  return { cx, cy, points, pathPoints };
+}
+
+function radialLabelOffset(
+  x: number,
+  y: number,
+  angle: number,
+  distance: number
+) {
+  return {
+    x: x + Math.cos(angle) * distance,
+    y: y + Math.sin(angle) * distance,
+  };
+}
 
 /** Normalize place names so nearby labels (e.g. Lahore / Pakistan) share a region. */
 function locationKey(location: string): string {
@@ -134,37 +214,6 @@ function placeLabel(location: string): string {
   return location.split(",")[0];
 }
 
-/** Space milestones by location change: larger gaps when the place changes. */
-function buildRoadPoints(
-  events: LifeEvent[],
-  width: number,
-  height: number,
-  margin: { top: number; right: number; bottom: number; left: number }
-) {
-  const innerW = width - margin.left - margin.right;
-  const innerH = height - margin.top - margin.bottom;
-  const count = events.length;
-  if (count === 0) return [];
-
-  const SAME_PLACE = 1;
-  const NEW_PLACE = 2.6;
-  const weights: number[] = [0];
-  for (let i = 1; i < count; i++) {
-    const moved =
-      locationKey(events[i].location) !== locationKey(events[i - 1].location);
-    weights.push(weights[i - 1] + (moved ? NEW_PLACE : SAME_PLACE));
-  }
-  const total = weights[count - 1] || 1;
-
-  return events.map((_, i) => {
-    const t = count === 1 ? 0.5 : weights[i] / total;
-    const y = margin.top + t * innerH;
-    const wave = Math.sin(t * Math.PI * 2.6 + 0.4) * (innerW * 0.3);
-    const x = margin.left + innerW * 0.5 + wave;
-    return { x, y, side: (wave < 0 ? "left" : "right") as "left" | "right" };
-  });
-}
-
 export default function LifeTimeline() {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -180,13 +229,8 @@ export default function LifeTimeline() {
   useEffect(() => {
     if (!containerRef.current) return;
     const update = () => {
-      const width = Math.min(containerRef.current!.clientWidth, 720);
-      const filtered = activeCategory
-        ? lifeEvents.filter((e) => e.category === activeCategory)
-        : lifeEvents;
-      // Extra height so location-change gaps stay readable
-      const height = Math.max(640, filtered.length * 120 + 160);
-      setSize({ width, height });
+      const dim = Math.min(containerRef.current!.clientWidth, 720);
+      setSize({ width: dim, height: dim });
     };
     const ro = new ResizeObserver(update);
     ro.observe(containerRef.current);
@@ -198,20 +242,21 @@ export default function LifeTimeline() {
     if (!svgRef.current) return;
 
     const { width, height } = size;
-    const margin = { top: 48, right: JOURNEY_PANEL_W + 28, bottom: 48, left: JOURNEY_PANEL_W + 28 };
+    const dim = Math.min(width, height);
 
     const filtered = activeCategory
       ? lifeEvents.filter((e) => e.category === activeCategory)
       : lifeEvents;
 
     const sorted = filtered.slice().sort((a, b) => a.startYear - b.startYear);
-    const roadPoints = buildRoadPoints(sorted, width, height, margin);
+    const spiral = buildSpiralLayout(sorted, dim);
 
     const nodes: MilestoneNode[] = sorted.map((event, i) => ({
       ...event,
-      x: roadPoints[i].x,
-      y: roadPoints[i].y,
-      side: roadPoints[i].side,
+      x: spiral.points[i].x,
+      y: spiral.points[i].y,
+      angle: spiral.points[i].angle,
+      placement: spiral.points[i].placement,
     }));
 
     const svg = d3.select(svgRef.current);
@@ -220,34 +265,34 @@ export default function LifeTimeline() {
 
     const g = svg.append("g");
 
-    const roadLine = d3
+    const spiralLine = d3
       .line<{ x: number; y: number }>()
       .curve(d3.curveCatmullRom.alpha(0.5))
       .x((d) => d.x)
       .y((d) => d.y);
 
-    const pathData = roadPoints.map(({ x, y }) => ({ x, y }));
+    const pathData = spiral.pathPoints;
 
     if (pathData.length > 1) {
       g.append("path")
-        .attr("d", roadLine(pathData))
+        .attr("d", spiralLine(pathData))
         .attr("fill", "none")
         .attr("stroke", ROAD_EDGE)
-        .attr("stroke-width", 28)
+        .attr("stroke-width", 22)
         .attr("stroke-linecap", "round")
         .attr("stroke-linejoin", "round")
         .attr("opacity", 0.45);
 
       g.append("path")
-        .attr("d", roadLine(pathData))
+        .attr("d", spiralLine(pathData))
         .attr("fill", "none")
         .attr("stroke", ROAD_FILL)
-        .attr("stroke-width", 22)
+        .attr("stroke-width", 16)
         .attr("stroke-linecap", "round")
         .attr("stroke-linejoin", "round");
 
       g.append("path")
-        .attr("d", roadLine(pathData))
+        .attr("d", spiralLine(pathData))
         .attr("fill", "none")
         .attr("stroke", "#e8d48a")
         .attr("stroke-width", 2)
@@ -255,6 +300,32 @@ export default function LifeTimeline() {
         .attr("stroke-dasharray", "6,10")
         .attr("opacity", 0.85);
     }
+
+    g.append("circle")
+      .attr("cx", spiral.cx)
+      .attr("cy", spiral.cy)
+      .attr("r", 28)
+      .attr("fill", "#fffef5")
+      .attr("stroke", ROAD_EDGE)
+      .attr("stroke-width", 1.5)
+      .attr("opacity", 0.9);
+
+    g.append("text")
+      .attr("x", spiral.cx)
+      .attr("y", spiral.cy - 4)
+      .attr("text-anchor", "middle")
+      .attr("fill", "#8a7f72")
+      .attr("font-size", 9)
+      .attr("font-weight", 600)
+      .text("1999");
+
+    g.append("text")
+      .attr("x", spiral.cx)
+      .attr("y", spiral.cy + 10)
+      .attr("text-anchor", "middle")
+      .attr("fill", "#8a7f72")
+      .attr("font-size", 8)
+      .text("Lahore");
 
     const nodeById = new Map(nodes.map((n) => [n.id, n]));
     const nodeG = g.append("g").attr("class", "nodes");
@@ -274,7 +345,7 @@ export default function LifeTimeline() {
     const defs = svg.append("defs");
     const panelsG = g.append("g").attr("class", "panels");
     nodes.forEach((node) => {
-      drawJourneyPanel(panelsG, defs, node, node.x, node.y, node.side);
+      drawJourneyPanel(panelsG, defs, node, node.x, node.y, node.placement);
     });
 
     function showHoverPreview(d: LifeEvent) {
@@ -340,9 +411,10 @@ export default function LifeTimeline() {
       .data(nodes)
       .join("text")
       .attr("class", "year-label")
-      .attr("x", (d) => d.x)
-      .attr("y", (d) => d.y + (d.side === "left" ? 34 : -26))
+      .attr("x", (d) => radialLabelOffset(d.x, d.y, d.angle, 22).x)
+      .attr("y", (d) => radialLabelOffset(d.x, d.y, d.angle, 22).y)
       .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
       .attr("fill", INK)
       .attr("font-size", 12)
       .attr("font-weight", 800)
@@ -351,7 +423,6 @@ export default function LifeTimeline() {
       .attr("stroke-width", 3)
       .text((d) => d.startYear);
 
-    // Show place when it changes (or on the first node) so moves stand out
     const placeNodes = nodes.filter(
       (d, i) =>
         i === 0 ||
@@ -363,9 +434,10 @@ export default function LifeTimeline() {
       .data(placeNodes)
       .join("text")
       .attr("class", "place-label")
-      .attr("x", (d) => d.x)
-      .attr("y", (d) => d.y + (d.side === "left" ? 50 : -12))
+      .attr("x", (d) => radialLabelOffset(d.x, d.y, d.angle, 36).x)
+      .attr("y", (d) => radialLabelOffset(d.x, d.y, d.angle, 36).y)
       .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
       .attr("fill", INK)
       .attr("font-size", 11)
       .attr("font-weight", 700)
@@ -374,28 +446,25 @@ export default function LifeTimeline() {
       .attr("stroke-width", 3)
       .text((d) => placeLabel(d.location));
 
-    g.append("text")
-      .attr("x", margin.left)
-      .attr("y", 24)
-      .attr("fill", "#8a7f72")
-      .attr("font-size", 10)
-      .attr("font-weight", 500)
-      .text("Lahore · 1999");
-
-    g.append("text")
-      .attr("x", width - margin.right)
-      .attr("y", height - 16)
-      .attr("text-anchor", "end")
-      .attr("fill", "#8a7f72")
-      .attr("font-size", 10)
-      .attr("font-weight", 500)
-      .text("Vancouver · Now");
+    if (nodes.length > 0) {
+      const last = nodes[nodes.length - 1];
+      const outer = radialLabelOffset(last.x, last.y, last.angle, 52);
+      g.append("text")
+        .attr("x", outer.x)
+        .attr("y", outer.y)
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "middle")
+        .attr("fill", "#8a7f72")
+        .attr("font-size", 10)
+        .attr("font-weight", 600)
+        .text("Vancouver · Now");
+    }
   }, [activeCategory, size]);
 
   return (
     <div className="relative">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted">Follow a path:</span>
+        <span className="text-sm text-muted">Follow the spiral:</span>
         {(Object.keys(categoryLabels) as LifeCategory[]).map((cat) => (
           <button
             key={cat}
@@ -435,10 +504,10 @@ export default function LifeTimeline() {
           ref={svgRef}
           className="mx-auto block"
           role="img"
-          aria-label="Winding road life journey visualization"
+          aria-label="Spiral life journey visualization"
         />
         <p className="border-t border-border/60 px-4 py-3 text-center text-xs text-muted">
-          A winding road from Lahore (1999) to Vancouver — each milestone has an illustrated panel from that chapter
+          A spiral from Lahore (1999) at the center outward to Vancouver — each milestone has an illustrated panel from that chapter
         </p>
       </div>
 
