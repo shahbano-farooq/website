@@ -1,8 +1,8 @@
 import type { Selection } from "d3";
 import type { LifeEvent } from "./data";
-import { JOURNEY_PANEL_H, JOURNEY_PANEL_W, JOURNEY_SCALE, journeyPanelImages } from "./journeyPanels";
+import { JOURNEY_PANEL_H, JOURNEY_PANEL_W, JOURNEY_SCALE, journeyOriginImage, journeyPanelImages } from "./journeyPanels";
 
-export { JOURNEY_PANEL_H, JOURNEY_PANEL_W, JOURNEY_SCALE, journeyPanelImages };
+export { JOURNEY_PANEL_H, JOURNEY_PANEL_W, JOURNEY_SCALE, journeyOriginImage, journeyPanelImages };
 
 type PanelParent = Selection<SVGGElement, unknown, null, undefined>;
 type DefsSelection = Selection<SVGDefsElement, unknown, null, undefined>;

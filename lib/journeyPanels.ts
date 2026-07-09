@@ -6,6 +6,8 @@ const PANEL_SCALE = 0.78;
 export const JOURNEY_PANEL_W = Math.round(76 * PANEL_SCALE);
 export const JOURNEY_PANEL_H = Math.round(100 * PANEL_SCALE);
 
+export const journeyOriginImage = withBasePath("/journey/murree-convent.png");
+
 export const journeyPanelImages: Record<string, string> = {
   bsc: withBasePath("/journey/bsc.png"),
   "esp-gits": withBasePath("/journey/esp-gits.png"),

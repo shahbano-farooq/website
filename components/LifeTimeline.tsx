@@ -14,6 +14,7 @@ import {
   JOURNEY_PANEL_W,
   JOURNEY_SCALE,
   drawJourneyPanel,
+  journeyOriginImage,
   journeyPanelImages,
   panelCenterFrom,
   type PanelPlacement,
@@ -167,91 +168,59 @@ function panelDistance(t: number, eventId?: string) {
   return Math.max(NODE_MARKER_R + s(2), base - pull);
 }
 
-function drawOriginFlowerBud(
+const ORIGIN_IMAGE_R = s(30);
+const ORIGIN_CLIP_ID = "journey-origin-clip";
+
+function drawOriginImage(
   parent: d3.Selection<SVGGElement, unknown, null, undefined>,
+  defs: d3.Selection<SVGDefsElement, unknown, null, undefined>,
   cx: number,
   cy: number
 ) {
-  const bud = parent
+  const size = ORIGIN_IMAGE_R * 2;
+
+  defs
+    .append("clipPath")
+    .attr("id", ORIGIN_CLIP_ID)
+    .append("circle")
+    .attr("r", ORIGIN_IMAGE_R);
+
+  const origin = parent
     .append("g")
-    .attr("class", "journey-origin-bud")
+    .attr("class", "journey-origin")
     .attr("transform", `translate(${cx},${cy})`);
 
-  const ink = INK;
-  const sketch = (path: string, width = 1.1, opacity = 0.9) => {
-    bud
-      .append("path")
-      .attr("d", path)
-      .attr("fill", "none")
-      .attr("stroke", ink)
-      .attr("stroke-width", s(width))
-      .attr("stroke-linecap", "round")
-      .attr("stroke-linejoin", "round")
-      .attr("opacity", opacity);
-  };
+  origin
+    .append("circle")
+    .attr("r", ORIGIN_IMAGE_R + s(1))
+    .attr("fill", PAINTERLY_BG);
 
-  const petalOutline =
-    `M 0 ${s(-3)} Q ${s(-7)} ${s(-12)} ${s(-4)} ${s(-21)} Q ${s(1)} ${s(-24)} ${s(5)} ${s(-19)} Q ${s(6)} ${s(-10)} 0 ${s(-3)}`;
+  origin
+    .append("image")
+    .attr("href", journeyOriginImage)
+    .attr("x", -ORIGIN_IMAGE_R)
+    .attr("y", -ORIGIN_IMAGE_R)
+    .attr("width", size)
+    .attr("height", size)
+    .attr("preserveAspectRatio", "xMidYMid slice")
+    .attr("clip-path", `url(#${ORIGIN_CLIP_ID})`);
 
-  for (let i = 0; i < 5; i++) {
-    const angle = (i / 5) * 360 - 90;
-    bud
-      .append("path")
-      .attr("d", petalOutline)
-      .attr("fill", "none")
-      .attr("stroke", ink)
-      .attr("stroke-width", s(1.15))
-      .attr("stroke-linecap", "round")
-      .attr("stroke-linejoin", "round")
-      .attr("opacity", 0.88)
-      .attr("transform", `rotate(${angle})`);
-  }
-
-  const innerPetal =
-    `M 0 ${s(-2)} Q ${s(-4)} ${s(-9)} ${s(-2)} ${s(-15)} Q ${s(2)} ${s(-14)} ${s(3)} ${s(-8)} Q ${s(2)} ${s(-4)} 0 ${s(-2)}`;
-  for (let i = 0; i < 4; i++) {
-    const angle = (i / 4) * 360 - 70;
-    bud
-      .append("path")
-      .attr("d", innerPetal)
-      .attr("fill", "none")
-      .attr("stroke", "#6a4f5a")
-      .attr("stroke-width", s(0.95))
-      .attr("stroke-linecap", "round")
-      .attr("stroke-linejoin", "round")
-      .attr("opacity", 0.75)
-      .attr("transform", `rotate(${angle})`);
-  }
-
-  sketch(
-    `M ${s(-2)} ${s(-5)} Q ${s(1)} ${s(-11)} ${s(3)} ${s(-7)} Q ${s(1)} ${s(-3)} ${s(-2)} ${s(-5)}`,
-    0.8,
-    0.6
-  );
-
-  sketch(
-    `M 0 ${s(5)} Q ${s(-3)} ${s(11)} ${s(-1)} ${s(17)} Q ${s(2)} ${s(21)} 0 ${s(24)}`,
-    1.2,
-    0.85
-  );
-  sketch(`M ${s(-1)} ${s(14)} Q ${s(3)} ${s(16)} ${s(2)} ${s(19)}`, 0.7, 0.5);
-
-  bud
+  origin
     .append("text")
     .attr("x", 0)
-    .attr("y", s(32))
+    .attr("y", ORIGIN_IMAGE_R + s(10))
     .attr("text-anchor", "middle")
-    .attr("fill", ink)
+    .attr("fill", INK)
     .attr("font-family", "Georgia, 'Times New Roman', serif")
     .attr("font-size", s(7))
     .attr("font-style", "italic")
     .attr("font-weight", 600)
     .text("Murree Convent");
 
-  bud
+  origin
     .append("text")
     .attr("x", 0)
-    .attr("y", s(41))
+    .attr("y", ORIGIN_IMAGE_R + s(19))
     .attr("text-anchor", "middle")
     .attr("fill", "#5c5348")
     .attr("font-family", "Georgia, 'Times New Roman', serif")
@@ -329,7 +298,7 @@ function computeJourneyBounds(
   }
 
   if (showOrigin) {
-    include(spiral.cx, spiral.cy, s(40));
+    include(spiral.cx, spiral.cy, ORIGIN_IMAGE_R + s(24));
   }
 
   for (const node of nodes) {
@@ -588,8 +557,10 @@ export default function LifeTimeline() {
         .style("cursor", "pointer");
     });
 
+    const defs = svg.append("defs");
+
     if (showOrigin) {
-      drawOriginFlowerBud(g, spiral.cx, spiral.cy);
+      drawOriginImage(g, defs, spiral.cx, spiral.cy);
     }
 
     if (showGaps) {
@@ -612,7 +583,6 @@ export default function LifeTimeline() {
       }
     }
 
-    const defs = svg.append("defs");
     const panelsG = g.append("g").attr("class", "panels");
     nodes.forEach((node) => {
       drawJourneyPanel(panelsG, defs, node, node.x, node.y, node.placement);
