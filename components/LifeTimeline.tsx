@@ -164,15 +164,17 @@ function buildSpiralLayout(layoutWidth: number): SpiralLayout {
   const panelPad = JOURNEY_PANEL_W / 2 + s(22);
   const labelPad = s(20);
   const maxR = layoutWidth / 2 - panelPad;
-  const minR = Math.max(s(30), maxR * 0.1);
-  const turns = 2.4;
+  const minR = Math.max(s(42), maxR * 0.22);
+  const turns = 2.1;
   const totalAngle = turns * Math.PI * 2;
   const startAngle = -Math.PI;
-  const shellGrowth = 1.72;
+  const shellGrowth = 1.22;
 
   const pointAt = (t: number) => {
     const angle = startAngle + t * totalAngle;
-    const shellT = (Math.pow(shellGrowth, t) - 1) / (shellGrowth - 1);
+    const exponential =
+      (Math.pow(shellGrowth, t) - 1) / (shellGrowth - 1);
+    const shellT = 0.4 * t + 0.6 * exponential;
     const r = minR + shellT * (maxR - minR);
     return {
       x: cx + r * Math.cos(angle),
