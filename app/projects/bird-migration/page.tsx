@@ -1,15 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { projects } from "@/lib/data";
+import { withBasePath } from "@/lib/paths";
 
 const project = projects.find((p) => p.id === "bird-migration")!;
-
-const BIRD_MIGRATION_VIDEO_URL =
-  "https://1sfu-my.sharepoint.com/:v:/r/personal/sfa143_sfu_ca/Documents/Final%20Project%20Video/Final%20Video%20View%203%20_v4.mp4?csf=1&web=1&e=fUjgFs&nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJTdHJlYW1XZWJBcHAiLCJyZWZlcnJhbFZpZXciOiJTaGFyZURpYWxvZy1MaW5rIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXcifX0%3D";
-
-const BIRD_MIGRATION_VIDEO_EMBED_URL = `https://1sfu-my.sharepoint.com/personal/sfa143_sfu_ca/_layouts/15/embed.aspx?newTargetListUrl=${encodeURIComponent(
-  "https://1sfu-my.sharepoint.com/personal/sfa143_sfu_ca/Documents/Final%20Project%20Video/Final%20Video%20View%203%20_v4.mp4"
-)}`;
 
 export const metadata: Metadata = {
   title: "Bird Migration Visualization",
@@ -42,25 +36,19 @@ export default function BirdMigrationPage() {
             Final walkthrough of the bird migration visualization
           </p>
         </div>
-        <div className="relative aspect-video w-full bg-black">
-          <iframe
-            src={BIRD_MIGRATION_VIDEO_EMBED_URL}
-            title="Bird Migration Visualization — project video"
-            className="absolute inset-0 h-full w-full border-0"
-            allow="autoplay; fullscreen"
-            allowFullScreen
-            loading="lazy"
-          />
-        </div>
-        <div className="border-t border-border px-4 py-3">
-          <a
-            href={BIRD_MIGRATION_VIDEO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-medium text-accent underline-offset-2 hover:underline"
+        <div className="bg-black">
+          <video
+            className="mx-auto block max-h-[560px] w-full"
+            controls
+            preload="metadata"
+            playsInline
           >
-            Open video in SharePoint →
-          </a>
+            <source
+              src={withBasePath("/projects/bird-migration/bird-migration-video.mp4")}
+              type="video/mp4"
+            />
+            Your browser does not support embedded video playback.
+          </video>
         </div>
       </div>
 

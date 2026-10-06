@@ -2,14 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import SectionHeading from "@/components/SectionHeading";
 import { projects } from "@/lib/data";
+import { withBasePath } from "@/lib/paths";
 
 const project = projects.find((p) => p.id === "pairedvis")!;
-
-const PAIREDVIS_VIDEO_URL =
-  "https://1drv.ms/v/c/c7d96879b83171be/IQCojl57DkzPRYE3rXt2oQQjAVqkefUVmSexeX7OJJQEXxc?e=OSUUnq";
-
-const PAIREDVIS_VIDEO_EMBED_URL =
-  "https://onedrive.live.com/embed?resid=C7D96879B83171BE%21s7b5e8ea84c0e45cf8137ad7b76a10423";
 
 export const metadata: Metadata = {
   title: "PairedVis — M.Sc. Thesis",
@@ -47,25 +42,19 @@ export default function PairedVisPage() {
             Demonstration of the PairedVis co-design tabletop system
           </p>
         </div>
-        <div className="relative aspect-video w-full bg-black">
-          <iframe
-            src={PAIREDVIS_VIDEO_EMBED_URL}
-            title="PairedVis — project video"
-            className="absolute inset-0 h-full w-full border-0"
-            allow="autoplay; fullscreen"
-            allowFullScreen
-            loading="lazy"
-          />
-        </div>
-        <div className="border-t border-border px-4 py-3">
-          <a
-            href={PAIREDVIS_VIDEO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-medium text-accent underline-offset-2 hover:underline"
+        <div className="bg-black">
+          <video
+            className="mx-auto block max-h-[560px] w-full"
+            controls
+            preload="metadata"
+            playsInline
           >
-            Open video in OneDrive →
-          </a>
+            <source
+              src={withBasePath("/projects/pairedvis/pairedvis-video.mp4")}
+              type="video/mp4"
+            />
+            Your browser does not support embedded video playback.
+          </video>
         </div>
       </div>
 
