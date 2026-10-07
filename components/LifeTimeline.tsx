@@ -208,29 +208,34 @@ function drawOriginImage(
   origin
     .append("text")
     .attr("x", 0)
-    .attr("y", ORIGIN_IMAGE_R + s(10))
+    .attr("y", ORIGIN_IMAGE_R + s(11))
     .attr("text-anchor", "middle")
     .attr("fill", INK)
-    .attr("font-family", "Georgia, 'Times New Roman', serif")
-    .attr("font-size", s(7))
-    .attr("font-style", "italic")
-    .attr("font-weight", 600)
-    .text("Murree Convent");
+    .attr("font-size", s(9))
+    .attr("font-weight", 800)
+    .attr("paint-order", "stroke")
+    .attr("stroke", PAINTERLY_BG)
+    .attr("stroke-width", s(3))
+    .text("1990–1997");
 
   origin
     .append("text")
     .attr("x", 0)
-    .attr("y", ORIGIN_IMAGE_R + s(19))
+    .attr("y", ORIGIN_IMAGE_R + s(21))
     .attr("text-anchor", "middle")
-    .attr("fill", "#5c5348")
+    .attr("fill", "#4a5568")
     .attr("font-family", "Georgia, 'Times New Roman', serif")
-    .attr("font-size", s(6.5))
+    .attr("font-size", s(7))
     .attr("font-style", "italic")
-    .text("Pakistan");
+    .attr("font-weight", 600)
+    .attr("paint-order", "stroke")
+    .attr("stroke", PAINTERLY_BG)
+    .attr("stroke-width", s(3))
+    .text("School · Convent of Jesus & Mary");
 }
 
 /** Archimedean spiral mapped to calendar years (1999 → present). */
-function buildSpiralLayout(layoutWidth: number): SpiralLayout {
+function buildSpiralLayout(layoutWidth: number, includeLeadIn: boolean): SpiralLayout {
   const cx = layoutWidth / 2;
   const cy = layoutWidth / 2;
   const panelPad = JOURNEY_PANEL_W / 2 + s(14);
@@ -266,6 +271,26 @@ function buildSpiralLayout(layoutWidth: number): SpiralLayout {
     const { x, y } = pointAt(t);
     return { x, y, t };
   });
+
+  if (includeLeadIn) {
+    // Curl out from under the origin image (lower-left, clear of its caption)
+    // and ease into the spiral start so the join has no visible kink.
+    const leadAngle = Math.PI / 4;
+    const leadStartR = ORIGIN_IMAGE_R * 0.7;
+    const leadSamples = 24;
+    const leadPoints: PathPoint[] = [];
+    for (let i = 0; i < leadSamples; i++) {
+      const u = i / leadSamples;
+      const angle = startAngle - leadAngle * (1 - u);
+      const r = leadStartR + (minR - leadStartR) * (1 - (1 - u) ** 2);
+      leadPoints.push({
+        x: cx + r * Math.cos(angle),
+        y: cy + r * Math.sin(angle),
+        t: -(1 - u) * (leadAngle / totalAngle),
+      });
+    }
+    pathPoints.unshift(...leadPoints);
+  }
 
   return { cx, cy, pathPoints, labelPad, pointAt };
 }
@@ -455,7 +480,7 @@ export default function LifeTimeline() {
 
     const filtered = filterJourneyEvents(activeCategory);
     const sorted = filtered.slice().sort((a, b) => a.startYear - b.startYear);
-    const spiral = buildSpiralLayout(width);
+    const spiral = buildSpiralLayout(width, !activeCategory);
 
     const nodes: MilestoneNode[] = sorted.map((event) => {
       const { t0, t1 } = eventSegment(event);
