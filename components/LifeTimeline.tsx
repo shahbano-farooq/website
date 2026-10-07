@@ -102,9 +102,26 @@ const CHUNRI_STREAKS = [
     return `M${a * k} 0 C${b * k} ${4 * k} ${c * k} ${9 * k} ${d * k} ${18 * k}`;
   })
   .join(" ");
-const LEAF_GREEN = "#5f8f4e";
-const DOGWOOD_VEIN = "#cbbd8f";
-const DOGWOOD_CENTRE = "#b9a334";
+const TOWEL_MINT = "#a6dccf";
+const TOWEL_CREAM = "#fdf8ec";
+const TOWEL_GREEN = "#2d7a5f";
+const TOWEL_ORANGE = "#e8762d";
+/** Hand-drawn water dashes, staggered row to row. */
+const TOWEL_RIPPLES = [1.5, 8, 15.5, 26.5]
+  .flatMap((y, row) =>
+    Array.from({ length: 9 }, (_, i) => {
+      const x = i * 4 + (row % 2 ? 2 : 0.5);
+      return `M${x} ${y} h1.8`;
+    })
+  )
+  .join(" ");
+const TOWEL_MOUNTAIN = "M1 13 L8 4 L11 8 L14 5.5 L19 13 Z";
+const TOWEL_SALMON =
+  "M3 22 C5 19.5 10 19.5 12.5 22 C10 24.5 5 24.5 3 22 Z M12.3 22 L15 20 L14.2 22 L15 24 Z";
+/** Zig-zag pine from the tea-towel sketch; trunk drawn separately in orange. */
+const pine = (x: number, top: number) =>
+  `M${x} ${top} L${x + 1.6} ${top + 3} H${x + 0.8} L${x + 2.6} ${top + 6} H${x + 1.4} ` +
+  `L${x + 3.4} ${top + 9} H${x - 3.4} L${x - 1.4} ${top + 6} H${x - 2.6} L${x - 0.8} ${top + 3} H${x - 1.6} Z`;
 const rotate = (x: number, y: number, deg: number): [number, number] => {
   const a = (deg * Math.PI) / 180;
   return [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
@@ -125,12 +142,6 @@ const dogwood = (cx: number, cy: number, deg: number) =>
       return `M${o} C${c1} ${c2} ${t1} L${n} L${t2} C${c3} ${c4} ${o} Z`;
     })
     .join(" ");
-const leaf = (cx: number, cy: number, deg: number) => {
-  const [a, c1, c2, b, c3, c4] = shapeAt(cx, cy, deg, [
-    [-4, 0], [-2, -2.4], [2, -2.4], [4, 0], [2, 2.4], [-2, 2.4],
-  ]);
-  return `M${a} C${c1} ${c2} ${b} C${c3} ${c4} ${a} Z`;
-};
 const heart = (x: number, bottomY: number) =>
   `M${x} ${bottomY} c-2.5 -2 -4 -3.2 -4 -4.8 a2 2 0 0 1 4 -0.8 a2 2 0 0 1 4 0.8 c0 1.6 -1.5 2.8 -4 4.8 z`;
 
@@ -186,39 +197,29 @@ const TEXTILE_PATTERNS: Record<TextileKey, TextileSpec> = {
       },
     ],
   },
-  // Crewel embroidery of the Pacific dogwood, British Columbia's floral emblem.
+  // Screen-printed Vancouver tea towel: mint harbour, mountains, pines, salmon and dogwood.
   vancouver: {
-    label: "Vancouver · Dogwood embroidery",
-    width: 24,
-    height: 24,
+    label: "Vancouver · Illustrated tea-towel print",
+    width: 36,
+    height: 28,
     marks: [
-      { d: "M0 0 H24 V24 H0 Z", fill: DYE_DARK, opacity: 0.12 },
-      { d: `${leaf(19, 6, -30)} ${leaf(5, 18, 150)}`, fill: LEAF_GREEN, opacity: 0.55 },
+      { d: "M0 0 H36 V28 H0 Z", fill: TOWEL_MINT },
+      { d: TOWEL_RIPPLES, stroke: TOWEL_CREAM, width: 0.7, opacity: 0.95 },
+      { d: TOWEL_MOUNTAIN, fill: TOWEL_CREAM },
+      { d: TOWEL_MOUNTAIN, stroke: TOWEL_GREEN, width: 0.7 },
+      { d: "M6.2 6.4 L8 4 L9.6 6.2", stroke: TOWEL_GREEN, width: 0.5, dash: "0.8 0.6" },
+      { d: `${pine(24, 3)} ${pine(30, 4.5)}`, fill: TOWEL_GREEN },
+      { d: "M24 12 V14.2 M30 13.5 V15.7", stroke: TOWEL_ORANGE, width: 1 },
+      { d: TOWEL_SALMON, fill: TOWEL_ORANGE },
+      { d: "M6 21 L6.6 23 M8 20.8 L8.6 23.2 M10 21 L10.5 23", stroke: TOWEL_CREAM, width: 0.4 },
+      { d: dot(4.6, 21.6, 0.4), fill: TOWEL_CREAM },
+      { d: dogwood(26, 22, 20), fill: TOWEL_CREAM },
+      { d: dogwood(26, 22, 20), stroke: TOWEL_GREEN, width: 0.4 },
+      { d: dot(26, 22, 1), fill: TOWEL_ORANGE },
       {
-        d: `${leaf(19, 6, -30)} ${leaf(5, 18, 150)}`,
-        stroke: THREAD,
-        width: 0.55,
-        opacity: 0.85,
-        dash: "1.1 0.9",
-      },
-      { d: `${dogwood(7, 7, 20)} ${dogwood(19, 19, 65)}`, fill: THREAD, opacity: 0.95 },
-      {
-        d: [20, 110, 200, 290, 65, 155, 245, 335]
-          .map((a, i) => {
-            const [cx, cy] = i < 4 ? [7, 7] : [19, 19];
-            const [x, y] = rotate(0, -3.4, a);
-            return `M${cx} ${cy} L${(cx + x).toFixed(2)} ${(cy + y).toFixed(2)}`;
-          })
-          .join(" "),
-        stroke: DOGWOOD_VEIN,
-        width: 0.35,
-        opacity: 0.9,
-      },
-      { d: `${dot(7, 7, 1.3)} ${dot(19, 19, 1.3)}`, fill: DOGWOOD_CENTRE, opacity: 0.95 },
-      {
-        d: [dot(13, 2, 0.45), dot(2, 12.5, 0.45), dot(22, 12, 0.45), dot(12, 22, 0.45)].join(" "),
-        fill: THREAD,
-        opacity: 0.8,
+        d: "M33 2.5 V5.5 M31.5 4 H34.5 M32 3 L34 5 M34 3 L32 5 M19 24 V26 M18 25 H20",
+        stroke: TOWEL_CREAM,
+        width: 0.45,
       },
     ],
   },

@@ -13,9 +13,9 @@ export const journeyPanelImages: Record<string, string> = {
   "esp-gits": withBasePath("/journey/esp-gits.png"),
   emircom: withBasePath("/journey/emircom.png"),
   etisalat: withBasePath("/journey/etisalat.png"),
-  msc: withBasePath("/journey/msc.png"),
+  msc: withBasePath("/journey/msc.jpg"),
   "ucalgary-ta": withBasePath("/journey/ucalgary-ta.png"),
-  zayed: withBasePath("/journey/zayed.png"),
+  zayed: withBasePath("/journey/zayed.jpg"),
   "research-zayed": withBasePath("/journey/research-zayed.png"),
-  phd: withBasePath("/journey/phd.png"),
+  phd: withBasePath("/journey/phd.jpg"),
 };
