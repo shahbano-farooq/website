@@ -216,7 +216,7 @@ function drawOriginImage(
     .attr("paint-order", "stroke")
     .attr("stroke", PAINTERLY_BG)
     .attr("stroke-width", s(3))
-    .text("1990–1997");
+    .text("1990–1998");
 
   origin
     .append("text")
@@ -232,6 +232,19 @@ function drawOriginImage(
     .attr("stroke", PAINTERLY_BG)
     .attr("stroke-width", s(3))
     .text("School · Convent of Jesus & Mary");
+
+  origin
+    .append("text")
+    .attr("x", 0)
+    .attr("y", ORIGIN_IMAGE_R + s(31))
+    .attr("text-anchor", "middle")
+    .attr("fill", INK)
+    .attr("font-size", s(8))
+    .attr("font-weight", 700)
+    .attr("paint-order", "stroke")
+    .attr("stroke", PAINTERLY_BG)
+    .attr("stroke-width", s(3))
+    .text("Murree, Pakistan");
 }
 
 /** Archimedean spiral mapped to calendar years (1999 → present). */
@@ -577,6 +590,22 @@ export default function LifeTimeline() {
     }
 
     const stripsG = g.append("g").attr("class", "strips");
+
+    if (showOrigin) {
+      // Overlap slightly into the first chapter so the butt caps don't leave a seam.
+      const schoolPoints = pathData.filter((p) => p.t <= 0.012);
+      if (schoolPoints.length > 1) {
+        stripsG
+          .append("path")
+          .attr("class", "journey-school-strip")
+          .attr("d", spiralLine(schoolPoints)!)
+          .attr("fill", "none")
+          .attr("stroke", categoryColors.education)
+          .attr("stroke-width", STRIP_WIDTH)
+          .attr("stroke-linecap", "butt")
+          .attr("stroke-linejoin", "round");
+      }
+    }
 
     sorted.forEach((event) => {
       const { t0, t1 } = eventSegment(event);
