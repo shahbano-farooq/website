@@ -307,8 +307,15 @@ function computeJourneyBounds(
     include(cx, cy, JOURNEY_PANEL_W / 2 + 4);
     include(cx, cy, JOURNEY_PANEL_H / 2 + 4);
     const labels = labelsAbovePanel(node);
-    include(labels.year.x, labels.year.y, 8);
-    include(labels.place.x, labels.place.y, 8);
+    const labelHalfW = s(42);
+    const labelX =
+      labelAnchor(node) === "end"
+        ? labels.year.x - labelHalfW
+        : labelAnchor(node) === "start"
+          ? labels.year.x + labelHalfW
+          : labels.year.x;
+    include(labelX - labelHalfW, labels.year.y - 8);
+    include(labelX + labelHalfW, labels.place.y + 8);
   }
 
   if (showGaps) {
@@ -322,7 +329,8 @@ function computeJourneyBounds(
   if (nodes.length > 0) {
     const last = nodes[nodes.length - 1];
     const { cx, cy } = panelCenterFrom(last.x, last.y, last.placement);
-    include(cx, cy + JOURNEY_PANEL_H / 2 + s(20), s(12));
+    include(cx - s(50), cy + JOURNEY_PANEL_H / 2 + s(20));
+    include(cx + s(50), cy + JOURNEY_PANEL_H / 2 + s(20));
   }
 
   if (!Number.isFinite(minX)) {
@@ -337,12 +345,32 @@ function computeJourneyBounds(
   };
 }
 
-function labelsAbovePanel(node: MilestoneNode) {
+/** Neighbouring chapters whose panels sit too close for centred labels. */
+const LABEL_ANCHOR: Partial<Record<string, "start" | "end">> = {
+  "esp-gits": "end",
+  emircom: "start",
+};
+
+function labelAnchor(node: MilestoneNode): "start" | "middle" | "end" {
+  return LABEL_ANCHOR[node.id] ?? "middle";
+}
+
+function labelsAbovePanel(node: MilestoneNode, showPlace = true) {
   const { cx, cy } = panelCenterFrom(node.x, node.y, node.placement);
   const panelTop = cy - JOURNEY_PANEL_H / 2;
+  const anchor = labelAnchor(node);
+  const x =
+    anchor === "end"
+      ? cx + JOURNEY_PANEL_W / 2
+      : anchor === "start"
+        ? cx - JOURNEY_PANEL_W / 2
+        : cx;
+  const lineY = (fromBottom: number) => panelTop - s(5) - fromBottom * s(11);
+  const roleRow = showPlace ? 1 : 0;
   return {
-    year: { x: cx, y: panelTop - s(16) },
-    place: { x: cx, y: panelTop - s(5) },
+    year: { x, y: lineY(roleRow + 1) },
+    role: { x, y: lineY(roleRow) },
+    place: { x, y: lineY(0) },
   };
 }
 
@@ -636,14 +664,19 @@ export default function LifeTimeline() {
       .on("mouseleave", resetPreview)
       .on("click", (_, d) => setSelected(d));
 
+    const showsPlace = new Set(
+      nodes.filter((d, i) => shouldShowPlaceLabel(d, i, nodes)).map((d) => d.id)
+    );
+    const labelsFor = (d: MilestoneNode) => labelsAbovePanel(d, showsPlace.has(d.id));
+
     nodeG
       .selectAll(".year-label")
       .data(nodes)
       .join("text")
       .attr("class", "year-label")
-      .attr("x", (d) => labelsAbovePanel(d).year.x)
-      .attr("y", (d) => labelsAbovePanel(d).year.y)
-      .attr("text-anchor", "middle")
+      .attr("x", (d) => labelsFor(d).year.x)
+      .attr("y", (d) => labelsFor(d).year.y)
+      .attr("text-anchor", (d) => labelAnchor(d))
       .attr("dominant-baseline", "auto")
       .attr("fill", INK)
       .attr("font-size", s(9))
@@ -653,7 +686,25 @@ export default function LifeTimeline() {
       .attr("stroke-width", s(3))
       .text((d) => yearRangeLabel(d));
 
-    const placeNodes = nodes.filter((d, i) => shouldShowPlaceLabel(d, i, nodes));
+    nodeG
+      .selectAll(".role-label")
+      .data(nodes)
+      .join("text")
+      .attr("class", "role-label")
+      .attr("x", (d) => labelsFor(d).role.x)
+      .attr("y", (d) => labelsFor(d).role.y)
+      .attr("text-anchor", (d) => labelAnchor(d))
+      .attr("dominant-baseline", "auto")
+      .attr("fill", "#4a5568")
+      .attr("font-size", s(8))
+      .attr("font-style", "italic")
+      .attr("font-weight", 600)
+      .attr("paint-order", "stroke")
+      .attr("stroke", PAINTERLY_BG)
+      .attr("stroke-width", s(3))
+      .text((d) => d.shortTitle);
+
+    const placeNodes = nodes.filter((d) => showsPlace.has(d.id));
 
     nodeG
       .selectAll(".place-label")
@@ -662,7 +713,7 @@ export default function LifeTimeline() {
       .attr("class", "place-label")
       .attr("x", (d) => labelsAbovePanel(d).place.x)
       .attr("y", (d) => labelsAbovePanel(d).place.y)
-      .attr("text-anchor", "middle")
+      .attr("text-anchor", (d) => labelAnchor(d))
       .attr("dominant-baseline", "auto")
       .attr("fill", INK)
       .attr("font-size", s(9))

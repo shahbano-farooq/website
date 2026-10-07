@@ -58,6 +58,8 @@ export type LifeCategory = "education" | "industry" | "teaching" | "research";
 export type LifeEvent = {
   id: string;
   title: string;
+  /** Compact role label shown beside the node on the journey spiral */
+  shortTitle: string;
   subtitle: string;
   startYear: number;
   endYear: number;
@@ -75,6 +77,7 @@ export const lifeEvents: LifeEvent[] = [
   {
     id: "bsc",
     title: "B.Sc. Computer Science (Honors)",
+    shortTitle: "B.Sc. Student",
     subtitle: "Kinnaird College for Women",
     startYear: 1999,
     endYear: 2002,
@@ -88,6 +91,7 @@ export const lifeEvents: LifeEvent[] = [
   {
     id: "esp-gits",
     title: "System Analyst / Programmer",
+    shortTitle: "System Analyst",
     subtitle: "ESP GITS",
     startYear: 2002,
     endYear: 2003,
@@ -99,6 +103,7 @@ export const lifeEvents: LifeEvent[] = [
   {
     id: "emircom",
     title: "Software Development Engineer",
+    shortTitle: "Software Engineer",
     subtitle: "Emircom",
     startYear: 2003,
     endYear: 2004,
@@ -110,6 +115,7 @@ export const lifeEvents: LifeEvent[] = [
   {
     id: "etisalat",
     title: "Technical Content Developer",
+    shortTitle: "Content Developer",
     subtitle: "Etisalat",
     startYear: 2004,
     endYear: 2006,
@@ -121,6 +127,7 @@ export const lifeEvents: LifeEvent[] = [
   {
     id: "msc",
     title: "M.Sc. Computer Science",
+    shortTitle: "M.Sc. Student",
     subtitle: "University of Calgary",
     startYear: 2012,
     endYear: 2014,
@@ -134,6 +141,7 @@ export const lifeEvents: LifeEvent[] = [
   {
     id: "ucalgary-ta",
     title: "Teaching Assistant",
+    shortTitle: "Teaching Assistant",
     subtitle: "University of Calgary",
     startYear: 2012,
     endYear: 2013,
@@ -145,6 +153,7 @@ export const lifeEvents: LifeEvent[] = [
   {
     id: "zayed",
     title: "Instructor",
+    shortTitle: "Instructor",
     subtitle: "Zayed University",
     startYear: 2014,
     endYear: 2025,
@@ -157,6 +166,7 @@ export const lifeEvents: LifeEvent[] = [
   {
     id: "research-zayed",
     title: "Research & Publications",
+    shortTitle: "Researcher",
     subtitle: "Zayed University & Collaborators",
     startYear: 2021,
     endYear: 2025,
@@ -169,6 +179,7 @@ export const lifeEvents: LifeEvent[] = [
   {
     id: "phd",
     title: "PhD Student",
+    shortTitle: "PhD Student",
     subtitle: "Simon Fraser University — SIAT",
     startYear: 2025,
     endYear: 2026,
@@ -183,6 +194,7 @@ export const lifeEvents: LifeEvent[] = [
   {
     id: "taip",
     title: "Research Assistant",
+    shortTitle: "Research Assistant",
     subtitle: "Transforming Arts Impact Initiative (TAIP)",
     startYear: 2026,
     endYear: 2026,
