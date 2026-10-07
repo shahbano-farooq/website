@@ -32,12 +32,387 @@ const PAINTERLY_BG = "#f7f4ef";
 const INK = "#2a3344";
 const ROAD_FILL = "#c4b5a0";
 const ROAD_EDGE = "#8a7a66";
-const GAP_ROAD = "#d8cfc0";
 const PREVIEW_IMAGE_WIDTH = 220;
 const PREVIEW_IMAGE_HEIGHT = 300;
 
 const s = (value: number) => Math.round(value * JOURNEY_SCALE);
-const STRIP_WIDTH = s(14);
+/** Ribbon tapers like a seashell: thin at the centre, widest on the outer coil. */
+const BAND_MIN_W = s(8);
+const BAND_MAX_W = s(44);
+
+type PlaceKey = "lahore" | "uae" | "calgary" | "vancouver";
+type TextileKey = PlaceKey | "family";
+
+const THREAD = "#fff6e0";
+const DYE_DARK = "#1b1f2a";
+const DYE_RED = "#b5332e";
+const FAMILY_COLOR = "#c47a8f";
+
+/** One layer of a fabric tile: a printed/woven fill or an embroidered stroke. */
+type TextileMark = {
+  d: string;
+  fill?: string;
+  stroke?: string;
+  opacity?: number;
+  width?: number;
+  dash?: string;
+};
+
+type TextileSpec = {
+  label: string;
+  width: number;
+  height: number;
+  marks: TextileMark[];
+};
+
+const dot = (x: number, y: number, r: number) =>
+  `M${x - r} ${y} a${r} ${r} 0 1 0 ${r * 2} 0 a${r} ${r} 0 1 0 ${-r * 2} 0`;
+
+const CHUNRI_K = 1.4;
+const CHUNRI_W = 24 * CHUNRI_K;
+const CHUNRI_H = 18 * CHUNRI_K;
+const chunriWave = (x: number, baseY: number, amp: number, phase = 0) =>
+  (baseY + amp * Math.sin(((x + phase) / 24) * Math.PI * 2)) * CHUNRI_K;
+/** Tied dots following waves: a double row, then a looser row of larger dots. */
+const CHUNRI_DOTS = [
+  ...Array.from({ length: 12 }, (_, i) => {
+    const x = 1 + i * 2;
+    return { x: x * CHUNRI_K, y: chunriWave(x, 4, 2.2), r: 0.95 + (i % 3) * 0.08 };
+  }),
+  ...Array.from({ length: 12 }, (_, i) => {
+    const x = 2 + i * 2;
+    return { x: x * CHUNRI_K, y: chunriWave(x, 6.6, 2.2), r: 0.95 + ((i + 1) % 3) * 0.08 };
+  }),
+  ...Array.from({ length: 8 }, (_, i) => {
+    const x = 1.5 + i * 3;
+    return { x: x * CHUNRI_K, y: chunriWave(x, 13, 1.8, 6), r: 1.25 + (i % 2) * 0.12 };
+  }),
+];
+const CHUNRI_GREEN = "#3e7a3c";
+const CHUNRI_DOT = "#fffaf0";
+/** Darker dye that crept along the folds while the cloth was bound. */
+const CHUNRI_STREAKS = [
+  [2, 3, 1, 2.5],
+  [8.5, 7.5, 10, 8.5],
+  [14.5, 16, 13.5, 15],
+  [20.5, 19.5, 21.5, 20.5],
+]
+  .map(([a, b, c, d]) => {
+    const k = CHUNRI_K;
+    return `M${a * k} 0 C${b * k} ${4 * k} ${c * k} ${9 * k} ${d * k} ${18 * k}`;
+  })
+  .join(" ");
+const LEAF_GREEN = "#5f8f4e";
+const DOGWOOD_VEIN = "#cbbd8f";
+const DOGWOOD_CENTRE = "#b9a334";
+const rotate = (x: number, y: number, deg: number): [number, number] => {
+  const a = (deg * Math.PI) / 180;
+  return [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
+};
+const shapeAt = (cx: number, cy: number, deg: number, pts: [number, number][]) =>
+  pts.map(([x, y]) => {
+    const [rx, ry] = rotate(x, y, deg);
+    return `${(cx + rx).toFixed(2)} ${(cy + ry).toFixed(2)}`;
+  });
+/** Four broad dogwood bracts, each with the notched tip the flower is known for. */
+const dogwood = (cx: number, cy: number, deg: number) =>
+  [0, 90, 180, 270]
+    .map((a) => {
+      const [o, c1, c2, t1, n, t2, c3, c4] = shapeAt(cx, cy, deg + a, [
+        [0, 0], [-2.6, -1.2], [-2.6, -4.2], [-0.8, -4.6],
+        [0, -4.0], [0.8, -4.6], [2.6, -4.2], [2.6, -1.2],
+      ]);
+      return `M${o} C${c1} ${c2} ${t1} L${n} L${t2} C${c3} ${c4} ${o} Z`;
+    })
+    .join(" ");
+const leaf = (cx: number, cy: number, deg: number) => {
+  const [a, c1, c2, b, c3, c4] = shapeAt(cx, cy, deg, [
+    [-4, 0], [-2, -2.4], [2, -2.4], [4, 0], [2, 2.4], [-2, 2.4],
+  ]);
+  return `M${a} C${c1} ${c2} ${b} C${c3} ${c4} ${a} Z`;
+};
+const heart = (x: number, bottomY: number) =>
+  `M${x} ${bottomY} c-2.5 -2 -4 -3.2 -4 -4.8 a2 2 0 0 1 4 -0.8 a2 2 0 0 1 4 0.8 c0 1.6 -1.5 2.8 -4 4.8 z`;
+
+/** Regional textiles laid over each chapter's felt colour. */
+const TEXTILE_PATTERNS: Record<TextileKey, TextileSpec> = {
+  // Punjabi chunri (bandhani) tie-dye: rows of small hollow resist dots following waves.
+  lahore: {
+    label: "Murree & Lahore · Chunri tie-dye",
+    width: CHUNRI_W,
+    height: CHUNRI_H,
+    marks: [
+      { d: `M0 0 H${CHUNRI_W} V${CHUNRI_H} H0 Z`, fill: CHUNRI_GREEN },
+      { d: CHUNRI_STREAKS, stroke: DYE_DARK, width: 0.5, opacity: 0.22 },
+      { d: CHUNRI_DOTS.map((p) => dot(p.x, p.y, p.r)).join(" "), fill: CHUNRI_DOT, opacity: 0.95 },
+      { d: CHUNRI_DOTS.map((p) => dot(p.x, p.y, p.r * 0.4)).join(" "), fill: CHUNRI_GREEN },
+    ],
+  },
+  // Emirati Al Sadu weaving: banded stripes framing a row of diamonds and teeth.
+  uae: {
+    label: "UAE · Al Sadu weave",
+    width: 16,
+    height: 14,
+    marks: [
+      { d: "M0 0 H16 V1.2 H0 Z M0 12.8 H16 V14 H0 Z", fill: DYE_DARK, opacity: 0.5 },
+      { d: "M0 1.9 H16 V2.7 H0 Z M0 11.3 H16 V12.1 H0 Z", fill: THREAD, opacity: 0.8 },
+      { d: "M0 3.4 H16 V10.6 H0 Z", fill: DYE_RED, opacity: 0.55 },
+      { d: "M8 3.6 L11.4 7 L8 10.4 L4.6 7 Z", fill: THREAD, opacity: 0.9 },
+      { d: "M8 5.4 L9.6 7 L8 8.6 L6.4 7 Z", fill: DYE_DARK, opacity: 0.75 },
+      { d: "M0 3.6 L3.4 7 L0 10.4 Z M16 3.6 L12.6 7 L16 10.4 Z", fill: DYE_DARK, opacity: 0.6 },
+      {
+        d: "M0 3.4 L1 4.4 L2 3.4 L3 4.4 L4 3.4 M12 10.6 L13 9.6 L14 10.6 L15 9.6 L16 10.6",
+        stroke: THREAD,
+        width: 0.5,
+        opacity: 0.7,
+      },
+    ],
+  },
+  // Western flannel plaid, as worn at the Calgary Stampede.
+  calgary: {
+    label: "Calgary · Western plaid",
+    width: 16,
+    height: 16,
+    marks: [
+      { d: "M0 0 H6 V16 H0 Z", fill: DYE_DARK, opacity: 0.28 },
+      { d: "M0 0 H16 V6 H0 Z", fill: DYE_DARK, opacity: 0.28 },
+      { d: "M3 0 V16 M0 3 H16", stroke: DYE_RED, width: 0.9, opacity: 0.85 },
+      { d: "M10.5 0 V16 M0 10.5 H16", stroke: THREAD, width: 0.7, opacity: 0.6 },
+      {
+        d: "M0 4 L4 0 M0 8 L8 0 M0 12 L12 0 M0 16 L16 0 M4 16 L16 4 M8 16 L16 8 M12 16 L16 12",
+        stroke: DYE_DARK,
+        width: 0.3,
+        opacity: 0.18,
+      },
+    ],
+  },
+  // Crewel embroidery of the Pacific dogwood, British Columbia's floral emblem.
+  vancouver: {
+    label: "Vancouver · Dogwood embroidery",
+    width: 24,
+    height: 24,
+    marks: [
+      { d: "M0 0 H24 V24 H0 Z", fill: DYE_DARK, opacity: 0.12 },
+      { d: `${leaf(19, 6, -30)} ${leaf(5, 18, 150)}`, fill: LEAF_GREEN, opacity: 0.55 },
+      {
+        d: `${leaf(19, 6, -30)} ${leaf(5, 18, 150)}`,
+        stroke: THREAD,
+        width: 0.55,
+        opacity: 0.85,
+        dash: "1.1 0.9",
+      },
+      { d: `${dogwood(7, 7, 20)} ${dogwood(19, 19, 65)}`, fill: THREAD, opacity: 0.95 },
+      {
+        d: [20, 110, 200, 290, 65, 155, 245, 335]
+          .map((a, i) => {
+            const [cx, cy] = i < 4 ? [7, 7] : [19, 19];
+            const [x, y] = rotate(0, -3.4, a);
+            return `M${cx} ${cy} L${(cx + x).toFixed(2)} ${(cy + y).toFixed(2)}`;
+          })
+          .join(" "),
+        stroke: DOGWOOD_VEIN,
+        width: 0.35,
+        opacity: 0.9,
+      },
+      { d: `${dot(7, 7, 1.3)} ${dot(19, 19, 1.3)}`, fill: DOGWOOD_CENTRE, opacity: 0.95 },
+      {
+        d: [dot(13, 2, 0.45), dot(2, 12.5, 0.45), dot(22, 12, 0.45), dot(12, 22, 0.45)].join(" "),
+        fill: THREAD,
+        opacity: 0.8,
+      },
+    ],
+  },
+  // Patchwork baby quilt with appliqué hearts and quilting stitches.
+  family: {
+    label: "Mom · patchwork quilt",
+    width: 24,
+    height: 24,
+    marks: [
+      { d: "M0 0 H12 V12 H0 Z M12 12 H24 V24 H12 Z", fill: THREAD, opacity: 0.22 },
+      {
+        d: [dot(16, 4, 0.8), dot(20, 8, 0.8), dot(16, 8, 0.8), dot(20, 4, 0.8), dot(4, 16, 0.8), dot(8, 20, 0.8), dot(4, 20, 0.8), dot(8, 16, 0.8)].join(" "),
+        fill: THREAD,
+        opacity: 0.6,
+      },
+      { d: `${heart(6, 9.2)} ${heart(18, 21.2)}`, fill: DYE_RED, opacity: 0.6 },
+      { d: `${heart(6, 9.2)} ${heart(18, 21.2)}`, stroke: THREAD, width: 0.6, opacity: 0.95, dash: "1 0.8" },
+      { d: "M0 0.3 H24 M0.3 0 V24 M0 12 H24 M12 0 V24", stroke: THREAD, width: 0.6, opacity: 0.75, dash: "1.4 1.2" },
+    ],
+  },
+};
+
+const PLACE_KEYS: PlaceKey[] = ["lahore", "uae", "calgary", "vancouver"];
+
+function textilePatternId(key: TextileKey, scope = "journey") {
+  return `${scope}-pattern-${key}`;
+}
+
+function appendTextilePattern(
+  defs: d3.Selection<SVGDefsElement, unknown, null, undefined>,
+  key: TextileKey,
+  scale: number,
+  scope = "journey"
+) {
+  const spec = TEXTILE_PATTERNS[key];
+  const pattern = defs
+    .append("pattern")
+    .attr("id", textilePatternId(key, scope))
+    .attr("patternUnits", "userSpaceOnUse")
+    .attr("width", spec.width)
+    .attr("height", spec.height)
+    .attr("patternTransform", `scale(${scale})`);
+  for (const mark of spec.marks) {
+    pattern
+      .append("path")
+      .attr("d", mark.d)
+      .attr("fill", mark.fill ?? "none")
+      .attr("fill-opacity", mark.fill ? (mark.opacity ?? 1) : null)
+      .attr("stroke", mark.stroke ?? null)
+      .attr("stroke-opacity", mark.stroke ? (mark.opacity ?? 1) : null)
+      .attr("stroke-width", mark.width ?? null)
+      .attr("stroke-dasharray", mark.dash ?? null)
+      .attr("stroke-linecap", "round")
+      .attr("stroke-linejoin", "round");
+  }
+}
+
+const FELT_FILTER_ID = "journey-felt";
+
+/** Fuzzy fibre grain and slightly irregular edges, like wet-felted wool. */
+function appendFeltFilter(defs: d3.Selection<SVGDefsElement, unknown, null, undefined>) {
+  const filter = defs
+    .append("filter")
+    .attr("id", FELT_FILTER_ID)
+    .attr("x", "-5%")
+    .attr("y", "-5%")
+    .attr("width", "110%")
+    .attr("height", "110%");
+  filter
+    .append("feTurbulence")
+    .attr("type", "fractalNoise")
+    .attr("baseFrequency", 0.06)
+    .attr("numOctaves", 2)
+    .attr("seed", 3)
+    .attr("result", "wobble");
+  filter
+    .append("feDisplacementMap")
+    .attr("in", "SourceGraphic")
+    .attr("in2", "wobble")
+    .attr("scale", 2.5)
+    .attr("xChannelSelector", "R")
+    .attr("yChannelSelector", "G")
+    .attr("result", "fuzzyEdge");
+  filter
+    .append("feTurbulence")
+    .attr("type", "fractalNoise")
+    .attr("baseFrequency", 0.85)
+    .attr("numOctaves", 3)
+    .attr("seed", 11)
+    .attr("result", "fibres");
+  filter
+    .append("feColorMatrix")
+    .attr("in", "fibres")
+    .attr("type", "saturate")
+    .attr("values", 0)
+    .attr("result", "greyFibres");
+  const grain = filter
+    .append("feComponentTransfer")
+    .attr("in", "greyFibres")
+    .attr("result", "grain");
+  for (const channel of ["feFuncR", "feFuncG", "feFuncB"]) {
+    grain.append(channel).attr("type", "linear").attr("slope", 0.45).attr("intercept", 0.68);
+  }
+  filter
+    .append("feBlend")
+    .attr("in", "fuzzyEdge")
+    .attr("in2", "grain")
+    .attr("mode", "multiply")
+    .attr("result", "felted");
+  filter
+    .append("feComposite")
+    .attr("in", "felted")
+    .attr("in2", "fuzzyEdge")
+    .attr("operator", "in");
+}
+
+function TextileSwatch({ textile, fill }: { textile: TextileKey; fill: string }) {
+  const spec = TEXTILE_PATTERNS[textile];
+  const id = textilePatternId(textile, "legend");
+  return (
+    <svg width="36" height="18" aria-hidden>
+      <defs>
+        <pattern
+          id={id}
+          patternUnits="userSpaceOnUse"
+          width={spec.width}
+          height={spec.height}
+          patternTransform={`scale(${spec.width > 20 ? 0.75 : 1.1})`}
+        >
+          {spec.marks.map((mark, i) => (
+            <path
+              key={i}
+              d={mark.d}
+              fill={mark.fill ?? "none"}
+              fillOpacity={mark.fill ? (mark.opacity ?? 1) : undefined}
+              stroke={mark.stroke}
+              strokeOpacity={mark.stroke ? (mark.opacity ?? 1) : undefined}
+              strokeWidth={mark.width}
+              strokeDasharray={mark.dash}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
+        </pattern>
+      </defs>
+      <rect width="36" height="18" rx="3" fill={fill} />
+      <rect width="36" height="18" rx="3" fill={`url(#${id})`} />
+    </svg>
+  );
+}
+
+function PlaceLegend() {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-border/60 px-4 py-2 text-xs text-muted">
+      <span>Fabrics show where I lived:</span>
+      {PLACE_KEYS.map((key) => (
+        <span key={key} className="inline-flex items-center gap-1.5">
+          <TextileSwatch textile={key} fill="#6b7787" />
+          {TEXTILE_PATTERNS[key].label}
+        </span>
+      ))}
+      <span className="inline-flex items-center gap-1.5">
+        <TextileSwatch textile="family" fill={FAMILY_COLOR} />
+        {TEXTILE_PATTERNS.family.label} (2006–2012)
+      </span>
+    </div>
+  );
+}
+
+/** The same fabric as an HTML background, for patches drawn outside the SVG. */
+function textileBackground(textile: TextileKey | null, color: string, scale: number) {
+  if (!textile) return { backgroundColor: color };
+  const spec = TEXTILE_PATTERNS[textile];
+  const paths = spec.marks
+    .map((m) => {
+      const attrs = [
+        `d="${m.d}"`,
+        `fill="${m.fill ?? "none"}"`,
+        m.fill ? `fill-opacity="${m.opacity ?? 1}"` : "",
+        m.stroke ? `stroke="${m.stroke}" stroke-opacity="${m.opacity ?? 1}"` : "",
+        m.width ? `stroke-width="${m.width}"` : "",
+        m.dash ? `stroke-dasharray="${m.dash}"` : "",
+        `stroke-linecap="round" stroke-linejoin="round"`,
+      ];
+      return `<path ${attrs.filter(Boolean).join(" ")}/>`;
+    })
+    .join("");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${spec.width}" height="${spec.height}" viewBox="0 0 ${spec.width} ${spec.height}" overflow="hidden">${paths}</svg>`;
+  return {
+    backgroundColor: color,
+    backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(svg)}")`,
+    backgroundSize: `${spec.width * scale}px ${spec.height * scale}px`,
+  };
+}
 
 function JourneyCallout({ event }: { event: LifeEvent }) {
   const accent = categoryColors[event.category];
@@ -49,14 +424,14 @@ function JourneyCallout({ event }: { event: LifeEvent }) {
       >
         {categoryLabels[event.category]}
       </span>
-      <h4 className="mt-2 font-serif text-lg font-semibold leading-snug text-foreground">
+      <h4 className="mt-2 font-serif text-sm font-semibold leading-snug text-foreground sm:text-lg">
         {event.title}
       </h4>
-      <p className="mt-1 text-sm text-muted">
+      <p className="mt-1 text-xs text-muted sm:text-sm">
         {event.subtitle} · {event.location}
       </p>
       <p className="text-xs text-muted">{yearRangeLabel(event)}</p>
-      <p className="mt-2.5 text-sm leading-relaxed text-muted">{event.description}</p>
+      <p className="mt-2.5 text-xs leading-relaxed text-muted sm:text-sm">{event.description}</p>
     </>
   );
 }
@@ -74,10 +449,7 @@ function JourneyHoverPreview({
     event.ongoing && !src ? (
     <div
       className="flex flex-col items-center justify-center border-2 border-dashed border-[#7eb8d4] bg-gradient-to-b from-[#e8f4fa] to-[#d4e8f2] text-center text-[#3d5a6e]"
-      style={{
-        width: PREVIEW_IMAGE_WIDTH,
-        height: PREVIEW_IMAGE_HEIGHT,
-      }}
+      style={{ width: "100%", aspectRatio: `${PREVIEW_IMAGE_WIDTH} / ${PREVIEW_IMAGE_HEIGHT}` }}
     >
       <svg width="48" height="48" viewBox="0 0 64 64" aria-hidden className="mb-2 opacity-90">
         <path
@@ -95,27 +467,35 @@ function JourneyHoverPreview({
       </span>
     </div>
   ) : src ? (
-    <img
-      src={src}
-      alt={event.title}
-      className="block w-full object-contain"
-      style={{
-        width: PREVIEW_IMAGE_WIDTH,
-        height: PREVIEW_IMAGE_HEIGHT,
-      }}
-    />
+    <div
+      className="relative rounded-lg p-3 sm:p-4"
+      style={textileBackground(
+        placeKeyFor(event.location),
+        categoryColors[event.category],
+        JOURNEY_SCALE * 1.4
+      )}
+    >
+      <div
+        className="pointer-events-none absolute inset-1.5 rounded-md border-2 border-dashed sm:inset-2"
+        style={{ borderColor: THREAD }}
+      />
+      <img
+        src={src}
+        alt={event.title}
+        className="relative block w-full object-contain"
+        style={{ aspectRatio: `${PREVIEW_IMAGE_WIDTH} / ${PREVIEW_IMAGE_HEIGHT}` }}
+      />
+    </div>
   ) : null;
 
   return (
     <div
-      className={`rounded-xl border bg-surface/95 p-3 shadow-lg backdrop-blur-sm ${
+      className={`rounded-xl border bg-surface/95 p-2 shadow-lg backdrop-blur-sm sm:p-3 ${
         active ? "border-accent ring-2 ring-accent/30" : "border-border"
       }`}
       aria-live="polite"
     >
-      <div className="overflow-hidden rounded-lg border border-border bg-[#fffef5]">
-        {panel}
-      </div>
+      <div className="overflow-hidden rounded-lg">{panel}</div>
       <div className="mt-3">
         <JourneyCallout event={event} />
       </div>
@@ -123,7 +503,7 @@ function JourneyHoverPreview({
   );
 }
 
-type PathPoint = { x: number; y: number; t: number };
+type PathPoint = { x: number; y: number; t: number; w: number };
 
 type MilestoneNode = LifeEvent & {
   x: number;
@@ -140,9 +520,12 @@ type SpiralLayout = {
   cy: number;
   pathPoints: PathPoint[];
   labelPad: number;
+  /** Baseline (relative to the centre) of the first caption line under the origin. */
+  originCaptionY: number;
   pointAt: (t: number) => {
     x: number;
     y: number;
+    w: number;
     angle: number;
     placement: PanelPlacement;
   };
@@ -153,6 +536,8 @@ const PANEL_GAP = s(1);
 const JOURNEY_MAX_HEIGHT_RATIO = 0.58 * JOURNEY_SCALE;
 const JOURNEY_MAX_WIDTH_PX = s(768);
 const JOURNEY_MAX_HEIGHT_PX = s(560);
+/** Below this the spiral is laid out at this size and scaled down whole, so cards never pile up. */
+const JOURNEY_MIN_LAYOUT_W = 900;
 
 /** Pull inner-spiral chapter panels closer to their nodes. */
 const TIGHTER_PANEL_PULL: Partial<Record<LifeEvent["id"], number>> = {
@@ -162,8 +547,10 @@ const TIGHTER_PANEL_PULL: Partial<Record<LifeEvent["id"], number>> = {
   msc: s(5),
 };
 
-function panelDistance(t: number, eventId?: string) {
-  const base = NODE_MARKER_R + PANEL_GAP + JOURNEY_PANEL_H / 2 + t * s(1);
+function panelDistance(t: number, bandWidth: number, eventId?: string) {
+  const stripClearance = Math.max(0, bandWidth / 2 - s(7));
+  const base =
+    NODE_MARKER_R + PANEL_GAP + stripClearance + JOURNEY_PANEL_H / 2 + t * s(1);
   const pull = eventId ? (TIGHTER_PANEL_PULL[eventId] ?? 0) : 0;
   return Math.max(NODE_MARKER_R + s(2), base - pull);
 }
@@ -175,7 +562,8 @@ function drawOriginImage(
   parent: d3.Selection<SVGGElement, unknown, null, undefined>,
   defs: d3.Selection<SVGDefsElement, unknown, null, undefined>,
   cx: number,
-  cy: number
+  cy: number,
+  captionY: number
 ) {
   const size = ORIGIN_IMAGE_R * 2;
 
@@ -208,38 +596,38 @@ function drawOriginImage(
   origin
     .append("text")
     .attr("x", 0)
-    .attr("y", ORIGIN_IMAGE_R + s(11))
+    .attr("y", captionY - s(18))
     .attr("text-anchor", "middle")
     .attr("fill", INK)
-    .attr("font-size", s(9))
+    .attr("font-size", s(8))
     .attr("font-weight", 800)
     .attr("paint-order", "stroke")
     .attr("stroke", PAINTERLY_BG)
     .attr("stroke-width", s(3))
-    .text("1990–1998");
+    .text("1990–1998 · School");
 
   origin
     .append("text")
     .attr("x", 0)
-    .attr("y", ORIGIN_IMAGE_R + s(21))
+    .attr("y", captionY - s(9))
     .attr("text-anchor", "middle")
     .attr("fill", "#4a5568")
     .attr("font-family", "Georgia, 'Times New Roman', serif")
-    .attr("font-size", s(7))
+    .attr("font-size", s(6.5))
     .attr("font-style", "italic")
     .attr("font-weight", 600)
     .attr("paint-order", "stroke")
     .attr("stroke", PAINTERLY_BG)
     .attr("stroke-width", s(3))
-    .text("School · Convent of Jesus & Mary");
+    .text("Convent of Jesus & Mary");
 
   origin
     .append("text")
     .attr("x", 0)
-    .attr("y", ORIGIN_IMAGE_R + s(31))
+    .attr("y", captionY)
     .attr("text-anchor", "middle")
     .attr("fill", INK)
-    .attr("font-size", s(8))
+    .attr("font-size", s(7))
     .attr("font-weight", 700)
     .attr("paint-order", "stroke")
     .attr("stroke", PAINTERLY_BG)
@@ -260,56 +648,98 @@ function buildSpiralLayout(layoutWidth: number, includeLeadIn: boolean): SpiralL
   const startAngle = -Math.PI;
   const shellGrowth = 1.1;
 
+  const bandWidthAt = (r: number) => {
+    const u = Math.max(0, Math.min(1, (r - ORIGIN_IMAGE_R) / (maxR - ORIGIN_IMAGE_R)));
+    return BAND_MIN_W + (BAND_MAX_W - BAND_MIN_W) * u;
+  };
+
   const pointAt = (t: number) => {
     const angle = startAngle + t * totalAngle;
     const exponential =
       (Math.pow(shellGrowth, t) - 1) / (shellGrowth - 1);
     const shellT = 0.55 * t + 0.45 * exponential;
     const r = minR + shellT * (maxR - minR);
+    const w = bandWidthAt(r);
     return {
       x: cx + r * Math.cos(angle),
       y: cy + r * Math.sin(angle),
+      w,
       angle,
       placement: {
         type: "radial" as const,
         angle,
-        distance: panelDistance(t),
+        distance: panelDistance(t, w),
       } satisfies PanelPlacement,
     };
   };
 
-  const pathSamples = 280;
+  const pathSamples = 480;
   const pathPoints: PathPoint[] = Array.from({ length: pathSamples + 1 }, (_, i) => {
     const t = i / pathSamples;
-    const { x, y } = pointAt(t);
-    return { x, y, t };
+    const { x, y, w } = pointAt(t);
+    return { x, y, t, w };
   });
 
   if (includeLeadIn) {
-    // Curl out from under the origin image (lower-left, clear of its caption)
-    // and ease into the spiral start so the join has no visible kink.
-    const leadAngle = Math.PI / 4;
-    const leadStartR = ORIGIN_IMAGE_R * 0.7;
-    const leadSamples = 24;
+    // One tight logarithmic turn around the origin image, starting hidden
+    // beneath it, so the shell curls inward the way a real whorl does.
+    const leadAngle = Math.PI * 2;
+    const leadStartR = ORIGIN_IMAGE_R * 0.8;
+    const leadSamples = 90;
     const leadPoints: PathPoint[] = [];
     for (let i = 0; i < leadSamples; i++) {
       const u = i / leadSamples;
       const angle = startAngle - leadAngle * (1 - u);
-      const r = leadStartR + (minR - leadStartR) * (1 - (1 - u) ** 2);
+      const r = leadStartR * Math.pow(minR / leadStartR, u);
       leadPoints.push({
         x: cx + r * Math.cos(angle),
         y: cy + r * Math.sin(angle),
         t: -(1 - u) * (leadAngle / totalAngle),
+        w: bandWidthAt(r),
       });
     }
     pathPoints.unshift(...leadPoints);
   }
 
-  return { cx, cy, pathPoints, labelPad, pointAt };
+  let originCaptionY = -(ORIGIN_IMAGE_R + s(6));
+  if (includeLeadIn) {
+    // The curl passes above the image a quarter of the way round;
+    // sit the caption just outside it.
+    const curlTopR = ORIGIN_IMAGE_R * 0.8 * Math.pow(minR / (ORIGIN_IMAGE_R * 0.8), 0.25);
+    originCaptionY = -(curlTopR + bandWidthAt(curlTopR) / 2 + s(6));
+  }
+
+  return { cx, cy, pathPoints, labelPad, originCaptionY, pointAt };
 }
 
 function slicePathByT(pathPoints: PathPoint[], t0: number, t1: number): PathPoint[] {
   return pathPoints.filter((p) => p.t >= t0 - 0.0001 && p.t <= t1 + 0.0001);
+}
+
+const ribbonEdge = d3
+  .line<[number, number]>()
+  .curve(d3.curveCatmullRom.alpha(0.5));
+
+/** Closed outline of a variable-width band following the spiral centreline. */
+function ribbonPath(points: PathPoint[], extra = 0): string {
+  if (points.length < 2) return "";
+  const left: [number, number][] = [];
+  const right: [number, number][] = [];
+  points.forEach((p, i) => {
+    const prev = points[Math.max(0, i - 1)];
+    const next = points[Math.min(points.length - 1, i + 1)];
+    const dx = next.x - prev.x;
+    const dy = next.y - prev.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const half = (p.w + extra) / 2;
+    const nx = (-dy / len) * half;
+    const ny = (dx / len) * half;
+    left.push([p.x + nx, p.y + ny]);
+    right.push([p.x - nx, p.y - ny]);
+  });
+  const outer = ribbonEdge(left)!;
+  const inner = ribbonEdge(right.reverse())!.replace(/^M/, "L");
+  return `${outer}${inner}Z`;
 }
 
 function computeJourneyBounds(
@@ -332,7 +762,7 @@ function computeJourneyBounds(
   };
 
   for (const p of spiral.pathPoints) {
-    include(p.x, p.y, STRIP_WIDTH);
+    include(p.x, p.y, p.w / 2 + s(4));
   }
 
   if (showOrigin) {
@@ -403,7 +833,7 @@ function labelsAbovePanel(node: MilestoneNode, showPlace = true) {
       : anchor === "start"
         ? cx - JOURNEY_PANEL_W / 2
         : cx;
-  const lineY = (fromBottom: number) => panelTop - s(5) - fromBottom * s(11);
+  const lineY = (fromBottom: number) => panelTop - s(4) - fromBottom * s(9);
   const roleRow = showPlace ? 1 : 0;
   return {
     year: { x, y: lineY(roleRow + 1) },
@@ -419,6 +849,12 @@ function locationKey(location: string): string {
   if (loc.includes("calgary")) return "calgary";
   if (loc.includes("vancouver") || loc === "sfu") return "vancouver";
   return loc.split(",")[0].trim();
+}
+
+function placeKeyFor(location: string): PlaceKey | null {
+  if (location.toLowerCase().includes("lahore")) return "lahore";
+  const key = locationKey(location);
+  return (PLACE_KEYS as string[]).includes(key) ? (key as PlaceKey) : null;
 }
 
 function placeLabel(location: string): string {
@@ -493,7 +929,9 @@ export default function LifeTimeline() {
 
     const filtered = filterJourneyEvents(activeCategory);
     const sorted = filtered.slice().sort((a, b) => a.startYear - b.startYear);
-    const spiral = buildSpiralLayout(width, !activeCategory);
+    const showOrigin = !activeCategory || activeCategory === "education";
+    const showGaps = !activeCategory;
+    const spiral = buildSpiralLayout(Math.max(width, JOURNEY_MIN_LAYOUT_W), showOrigin);
 
     const nodes: MilestoneNode[] = sorted.map((event) => {
       const { t0, t1 } = eventSegment(event);
@@ -506,7 +944,7 @@ export default function LifeTimeline() {
         angle: pt.angle,
         placement: {
           ...pt.placement,
-          distance: panelDistance(tMid, event.id),
+          distance: panelDistance(tMid, pt.w, event.id),
         },
         tMid,
         t0,
@@ -514,13 +952,12 @@ export default function LifeTimeline() {
       };
     });
 
-    const showOrigin = !activeCategory;
-    const showGaps = !activeCategory;
     const bounds = computeJourneyBounds(nodes, spiral, showOrigin, showGaps);
     const vbW = bounds.maxX - bounds.minX;
     const vbH = bounds.maxY - bounds.minY;
     const naturalHeight = width * (vbH / vbW);
-    const svgHeight = Math.min(maxHeight, Math.max(s(280), naturalHeight));
+    const minHeight = width < JOURNEY_MIN_LAYOUT_W ? 0 : s(280);
+    const svgHeight = Math.min(maxHeight, Math.max(minHeight, naturalHeight));
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
@@ -542,42 +979,13 @@ export default function LifeTimeline() {
 
     if (pathData.length > 1) {
       g.append("path")
-        .attr("d", spiralLine(pathData))
-        .attr("fill", "none")
-        .attr("stroke", ROAD_EDGE)
-        .attr("stroke-width", s(16))
-        .attr("stroke-linecap", "round")
-        .attr("stroke-linejoin", "round")
+        .attr("d", ribbonPath(pathData, s(4)))
+        .attr("fill", ROAD_EDGE)
         .attr("opacity", 0.45);
 
       g.append("path")
-        .attr("d", spiralLine(pathData))
-        .attr("fill", "none")
-        .attr("stroke", ROAD_FILL)
-        .attr("stroke-width", s(12))
-        .attr("stroke-linecap", "round")
-        .attr("stroke-linejoin", "round");
-
-      if (showGaps) {
-        for (const gap of journeyGaps) {
-          const gapPoints = slicePathByT(
-            pathData,
-            yearToT(gap.startYear),
-            yearToT(gap.endYear)
-          );
-          if (gapPoints.length > 1) {
-            g.append("path")
-              .attr("d", spiralLine(gapPoints))
-              .attr("fill", "none")
-              .attr("stroke", GAP_ROAD)
-              .attr("stroke-width", s(12))
-              .attr("stroke-linecap", "butt")
-              .attr("stroke-linejoin", "round")
-              .attr("stroke-dasharray", "2,6")
-              .attr("opacity", 0.85);
-          }
-        }
-      }
+        .attr("d", ribbonPath(pathData))
+        .attr("fill", ROAD_FILL);
 
       g.append("path")
         .attr("d", spiralLine(pathData))
@@ -589,21 +997,67 @@ export default function LifeTimeline() {
         .attr("opacity", 0.85);
     }
 
+    const defs = svg.append("defs");
+    for (const key of Object.keys(TEXTILE_PATTERNS) as TextileKey[]) {
+      appendTextilePattern(defs, key, JOURNEY_SCALE);
+    }
+    appendFeltFilter(defs);
+
     const stripsG = g.append("g").attr("class", "strips");
+    const feltG = stripsG.append("g").attr("filter", `url(#${FELT_FILTER_ID})`);
+    const stitchG = stripsG.append("g").style("pointer-events", "none");
+
+    const drawPatternedStrip = (
+      points: PathPoint[],
+      color: string,
+      textile: TextileKey | null
+    ) => {
+      const d = ribbonPath(points);
+      const strip = feltG.append("path").attr("d", d).attr("fill", color);
+      if (textile) {
+        feltG
+          .append("path")
+          .attr("class", "journey-strip-pattern")
+          .attr("d", d)
+          .attr("fill", `url(#${textilePatternId(textile)})`)
+          .style("pointer-events", "none");
+      }
+      stitchG
+        .append("path")
+        .attr("d", ribbonPath(points, -s(5)))
+        .attr("fill", "none")
+        .attr("stroke", THREAD)
+        .attr("stroke-opacity", 0.7)
+        .attr("stroke-width", s(0.8))
+        .attr("stroke-dasharray", `${s(3)} ${s(2.5)}`)
+        .attr("stroke-linecap", "round");
+      return strip;
+    };
+
+    if (showGaps) {
+      for (const gap of journeyGaps) {
+        const gapPoints = slicePathByT(
+          pathData,
+          yearToT(gap.startYear),
+          yearToT(gap.endYear)
+        );
+        if (gapPoints.length > 1) {
+          drawPatternedStrip(gapPoints, FAMILY_COLOR, "family").attr(
+            "class",
+            "journey-family-strip"
+          );
+        }
+      }
+    }
 
     if (showOrigin) {
       // Overlap slightly into the first chapter so the butt caps don't leave a seam.
       const schoolPoints = pathData.filter((p) => p.t <= 0.012);
       if (schoolPoints.length > 1) {
-        stripsG
-          .append("path")
-          .attr("class", "journey-school-strip")
-          .attr("d", spiralLine(schoolPoints)!)
-          .attr("fill", "none")
-          .attr("stroke", categoryColors.education)
-          .attr("stroke-width", STRIP_WIDTH)
-          .attr("stroke-linecap", "butt")
-          .attr("stroke-linejoin", "round");
+        drawPatternedStrip(schoolPoints, categoryColors.education, "lahore").attr(
+          "class",
+          "journey-school-strip"
+        );
       }
     }
 
@@ -612,37 +1066,32 @@ export default function LifeTimeline() {
       const segmentPoints = slicePathByT(pathData, t0, t1);
       if (segmentPoints.length < 2) return;
 
-      const color = categoryColors[event.category];
-
-      stripsG
-        .append("path")
+      drawPatternedStrip(
+        segmentPoints,
+        categoryColors[event.category],
+        placeKeyFor(event.location)
+      )
         .datum(event)
         .attr("class", "journey-strip")
-        .attr("data-event-id", event.id)
-        .attr("d", spiralLine(segmentPoints)!)
-        .attr("fill", "none")
-        .attr("stroke", color)
-        .attr("stroke-width", STRIP_WIDTH)
-        .attr("stroke-linecap", "butt")
-        .attr("stroke-linejoin", "round")
-        .attr("opacity", 1);
+        .attr("data-event-id", event.id);
+    });
+
+    sorted.forEach((event) => {
+      const { t0, t1 } = eventSegment(event);
+      const segmentPoints = slicePathByT(pathData, t0, t1);
+      if (segmentPoints.length < 2) return;
 
       stripsG
         .append("path")
         .datum(event)
         .attr("class", "journey-strip-hit")
-        .attr("d", spiralLine(segmentPoints)!)
-        .attr("fill", "none")
-        .attr("stroke", "transparent")
-        .attr("stroke-width", s(22))
-        .attr("stroke-linecap", "round")
+        .attr("d", ribbonPath(segmentPoints, s(6)))
+        .attr("fill", "transparent")
         .style("cursor", "pointer");
     });
 
-    const defs = svg.append("defs");
-
     if (showOrigin) {
-      drawOriginImage(g, defs, spiral.cx, spiral.cy);
+      drawOriginImage(g, defs, spiral.cx, spiral.cy, spiral.originCaptionY);
     }
 
     if (showGaps) {
@@ -651,23 +1100,41 @@ export default function LifeTimeline() {
         const pt = spiral.pointAt(tMid);
         g.append("text")
           .attr("x", pt.x)
-          .attr("y", pt.y)
+          .attr("y", pt.y - s(5))
           .attr("text-anchor", "middle")
           .attr("dominant-baseline", "middle")
-          .attr("fill", "#9a8f82")
+          .attr("fill", INK)
           .attr("font-size", s(8))
+          .attr("font-weight", 800)
+          .attr("paint-order", "stroke")
+          .attr("stroke", PAINTERLY_BG)
+          .attr("stroke-width", s(3))
+          .text(`${gap.startYear}–${gap.endYear}`);
+        g.append("text")
+          .attr("x", pt.x)
+          .attr("y", pt.y + s(6))
+          .attr("text-anchor", "middle")
+          .attr("dominant-baseline", "middle")
+          .attr("fill", "#4a5568")
+          .attr("font-size", s(7))
           .attr("font-weight", 600)
           .attr("font-style", "italic")
           .attr("paint-order", "stroke")
           .attr("stroke", PAINTERLY_BG)
           .attr("stroke-width", s(3))
-          .text(`${gap.startYear}–${gap.endYear}`);
+          .text("Mom");
       }
     }
 
     const panelsG = g.append("g").attr("class", "panels");
     nodes.forEach((node) => {
-      drawJourneyPanel(panelsG, defs, node, node.x, node.y, node.placement);
+      const place = placeKeyFor(node.location);
+      drawJourneyPanel(panelsG, defs, node, node.x, node.y, node.placement, {
+        color: categoryColors[node.category],
+        fabricFill: place ? `url(#${textilePatternId(place)})` : undefined,
+        feltFilter: `url(#${FELT_FILTER_ID})`,
+        thread: THREAD,
+      });
     });
 
     const nodeG = g.append("g").attr("class", "nodes");
@@ -733,7 +1200,7 @@ export default function LifeTimeline() {
       .attr("text-anchor", (d) => labelAnchor(d))
       .attr("dominant-baseline", "auto")
       .attr("fill", INK)
-      .attr("font-size", s(9))
+      .attr("font-size", s(7.5))
       .attr("font-weight", 800)
       .attr("paint-order", "stroke")
       .attr("stroke", PAINTERLY_BG)
@@ -750,7 +1217,7 @@ export default function LifeTimeline() {
       .attr("text-anchor", (d) => labelAnchor(d))
       .attr("dominant-baseline", "auto")
       .attr("fill", "#4a5568")
-      .attr("font-size", s(8))
+      .attr("font-size", s(6.5))
       .attr("font-style", "italic")
       .attr("font-weight", 600)
       .attr("paint-order", "stroke")
@@ -770,7 +1237,7 @@ export default function LifeTimeline() {
       .attr("text-anchor", (d) => labelAnchor(d))
       .attr("dominant-baseline", "auto")
       .attr("fill", INK)
-      .attr("font-size", s(9))
+      .attr("font-size", s(7.5))
       .attr("font-weight", 700)
       .attr("paint-order", "stroke")
       .attr("stroke", PAINTERLY_BG)
@@ -787,7 +1254,7 @@ export default function LifeTimeline() {
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "auto")
         .attr("fill", "#8a7f72")
-        .attr("font-size", s(10))
+        .attr("font-size", s(8.5))
         .attr("font-weight", 600)
         .text("Ongoing exploration");
     }
@@ -827,7 +1294,7 @@ export default function LifeTimeline() {
         )}
       </div>
 
-      <div className="flex flex-col items-stretch gap-4 xl:flex-row xl:items-start xl:gap-6">
+      <div className="flex flex-row items-start gap-2 sm:gap-4 xl:gap-6">
         <div
           ref={containerRef}
           className="relative mx-auto w-full min-w-0 flex-1 overflow-visible rounded-xl border border-border"
@@ -842,10 +1309,11 @@ export default function LifeTimeline() {
           <p className="border-t border-border/60 px-4 py-3 text-center text-xs text-muted">
             Colored strips along the spiral mark each chapter — from Murree Convent, Pakistan at the center outward to Vancouver today
           </p>
+          <PlaceLegend />
         </div>
 
         {hovered && (
-          <aside className="w-full shrink-0 xl:sticky xl:top-24 xl:w-72">
+          <aside className="sticky top-24 w-[36%] max-w-72 shrink-0 sm:w-56 lg:w-64 xl:w-72">
             <JourneyHoverPreview event={hovered} active={true} />
           </aside>
         )}

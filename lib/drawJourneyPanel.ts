@@ -123,13 +123,24 @@ export function drawOngoingExplorationPanel(
     .text("path not yet drawn");
 }
 
+/** Cloth-patch frame: the chapter's fabric as a border, sewn on with a running stitch. */
+export type PanelPatch = {
+  color: string;
+  fabricFill?: string;
+  feltFilter?: string;
+  thread: string;
+};
+
+const PATCH_BORDER = 7;
+
 export function drawJourneyPanel(
   parent: PanelParent,
   defs: DefsSelection,
   event: LifeEvent,
   x: number,
   y: number,
-  placement: PanelPlacement
+  placement: PanelPlacement,
+  patch?: PanelPatch
 ) {
   const imageSrc = journeyPanelImages[event.id];
   if (event.ongoing && !imageSrc) {
@@ -138,6 +149,11 @@ export function drawJourneyPanel(
   }
 
   if (!imageSrc) return;
+
+  if (patch) {
+    drawPatchPanel(parent, defs, event, imageSrc, x, y, placement, patch);
+    return;
+  }
 
   const { px, py } = panelPosition(x, y, placement);
   const clipId = `journey-clip-${event.id}`;
@@ -176,6 +192,79 @@ export function drawJourneyPanel(
     .attr("href", imageSrc)
     .attr("x", 2)
     .attr("y", 2)
+    .attr("width", innerW)
+    .attr("height", innerH)
+    .attr("preserveAspectRatio", "xMidYMid meet")
+    .attr("clip-path", `url(#${clipId})`);
+}
+
+function drawPatchPanel(
+  parent: PanelParent,
+  defs: DefsSelection,
+  event: LifeEvent,
+  imageSrc: string,
+  x: number,
+  y: number,
+  placement: PanelPlacement,
+  patch: PanelPatch
+) {
+  const { px, py } = panelPosition(x, y, placement);
+  const clipId = `journey-clip-${event.id}`;
+  const b = PATCH_BORDER;
+  const innerW = JOURNEY_PANEL_W - b * 2;
+  const innerH = JOURNEY_PANEL_H - b * 2;
+
+  defs
+    .append("clipPath")
+    .attr("id", clipId)
+    .append("rect")
+    .attr("width", innerW)
+    .attr("height", innerH)
+    .attr("rx", 2);
+
+  const panelG = parent
+    .append("g")
+    .datum(event)
+    .attr("class", "journey-panel journey-panel-patch")
+    .attr("data-event-id", event.id)
+    .attr("transform", `translate(${px}, ${py})`)
+    .style("pointer-events", "all")
+    .style("cursor", "pointer");
+
+  const cloth = panelG.append("g");
+  if (patch.feltFilter) cloth.attr("filter", patch.feltFilter);
+  cloth
+    .append("rect")
+    .attr("width", JOURNEY_PANEL_W)
+    .attr("height", JOURNEY_PANEL_H)
+    .attr("rx", 6)
+    .attr("fill", patch.color);
+  if (patch.fabricFill) {
+    cloth
+      .append("rect")
+      .attr("width", JOURNEY_PANEL_W)
+      .attr("height", JOURNEY_PANEL_H)
+      .attr("rx", 6)
+      .attr("fill", patch.fabricFill);
+  }
+
+  panelG
+    .append("rect")
+    .attr("x", b / 2)
+    .attr("y", b / 2)
+    .attr("width", JOURNEY_PANEL_W - b)
+    .attr("height", JOURNEY_PANEL_H - b)
+    .attr("rx", 4)
+    .attr("fill", "none")
+    .attr("stroke", patch.thread)
+    .attr("stroke-width", 1.3)
+    .attr("stroke-dasharray", "3.5 2.5")
+    .attr("stroke-linecap", "round");
+
+  const inner = panelG.append("g").attr("transform", `translate(${b}, ${b})`);
+  inner
+    .append("image")
+    .attr("href", imageSrc)
     .attr("width", innerW)
     .attr("height", innerH)
     .attr("preserveAspectRatio", "xMidYMid meet")

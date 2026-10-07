@@ -96,7 +96,7 @@ export const lifeEvents: LifeEvent[] = [
     startYear: 2002,
     endYear: 2003,
     category: "industry",
-    location: "Pakistan",
+    location: "Lahore, Pakistan",
     description:
       "Full-stack development for MCB bank credit approval automation and educational messenger applications.",
   },
